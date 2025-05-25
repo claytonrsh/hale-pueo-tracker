@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hale Pueo - homestead tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f1de;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 1rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #4a5568;
+        }
+        .tab-button:hover {
+            background-color: #f7fafc;
+            border-bottom-color: #a57c5b;
+        }
+        .tab-button.active {
+            border-bottom-color: #8db580;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        .tab-content {
+            display: none;
+            padding-top: 1.5rem;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-input, .form-textarea, .form-date, .form-datetime, .form-select {
+            border-color: #c7c7c7;
+            transition: border-color 0.3s ease;
+        }
+        .form-input:focus, .form-textarea:focus, .form-date:focus, .form-datetime:focus, .form-select:focus {
+            border-color: #8db580;
+            box-shadow: 0 0 0 2px rgba(141, 181, 128, 0.3);
+            outline: none;
+        }
+        .action-button {
+            background-color: #a57c5b;
+            color: white;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            transition: background-color 0.3s ease;
+        }
+        .action-button:hover {
+            background-color: #8c694c;
+        }
+        .action-button:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+        }
+        
+        #messageBox, #loadingBox, #errorBox, #activityMessageBox, #taskMessageBox {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #8db580;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #farmMapViewport {
+            width: 100%;
+            height: 70vh;
+            max-height: 700px;
+            border: 2px solid #acc6a0;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            background-color: #e6f0e1;
+        }
+        #farmMapImage {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center center;
+        }
+        .map-asset-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .map-asset {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            pointer-events: auto;
+            transform: translate(-50%, -50%);
+        }
+        .map-asset:hover {
+            transform: translate(-50%, -50%) scale(1.25);
+            box-shadow: 0 0 12px rgba(0,0,0,0.5);
+            z-index: 15;
+        }
+        .map-asset.tree { background-color: rgba(76, 175, 80, 0.85); border: 1px solid rgba(46, 125, 50, 0.9); }
+        .map-asset.plant { background-color: rgba(139, 195, 74, 0.85); border: 1px solid rgba(104, 159, 56, 0.9); }
+        .map-asset.poultry { background-color: rgba(255, 193, 7, 0.85); border: 1px solid rgba(251, 140, 0, 0.9); }
+        .map-asset.structure { background-color: rgba(158, 158, 158, 0.85); border: 1px solid rgba(97, 97, 97, 0.9); }
+        .map-asset.other { background-color: rgba(33, 150, 243, 0.85); border: 1px solid rgba(25, 118, 210, 0.9); }
+        .map-asset.selected-on-map {
+            border: 3px solid #d32f2f;
+            transform: translate(-50%, -50%) scale(1.4);
+            z-index: 20;
+        }
+        .asset-image, .activity-image {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #ddd;
+            object-fit: cover;
+        }
+        .notes-textarea {
+            min-height: 80px;
+        }
+        .activity-log-entry, .task-list-item {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .activity-log-entry:last-child, .task-list-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .subtitle-link {
+            color: #3182ce;
+            text-decoration: underline;
+        }
+        .subtitle-link:hover {
+            color: #2c5282;
+        }
+        .priority-High { color: #e53e3e; font-weight: bold; }
+        .priority-Medium { color: #dd6b20; }
+        .priority-Low { color: #38a169; }
+        .task-completed { text-decoration: line-through; color: #a0aec0; }
+        .task-completed .font-semibold { font-weight: normal; }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-close-button {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #777;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        .modal-close-button:hover {
+            color: #333;
+        }
+        .asset-list-item {
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .asset-list-item:hover {
+            background-color: #f7fafc;
+        }
+        .missing-location-flag {
+            font-size: 0.75rem;
+            color: #e53e3e;
+            font-style: italic;
+            margin-left: 0.5rem;
+        }
+        #imageZoomModal .modal-content {
+            max-width: 90vw;
+            max-height: 90vh;
+            padding: 0.5rem;
+            background-color: #333;
+        }
+        #zoomedImage {
+            display: block;
+            max-width: 100%;
+            max-height: calc(90vh - 40px);
+            margin: auto;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-[#5c4033]">Hale Pueo - homestead tracker</h1>
+            <p class="text-sm text-gray-600 mt-2">
+                All data is from this spreadsheet:
+                <a href="https://docs.google.com/spreadsheets/d/1j02KCSEBbB_nayAV45xxf9covYy1p9zULF2rOG2gdAQ/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="subtitle-link">
+                    Data Spreadsheet
+                </a>
+            </p>
+        </header>
+
+        <div class="mb-6 border-b border-gray-300">
+            <nav class="flex -mb-px" aria-label="Tabs">
+                <button onclick="openTab(event, 'dashboardTab')" class="tab-button active" id="dashboardTabButton">Dashboard</button>
+                <button onclick="openTab(event, 'assetListTab')" class="tab-button" id="assetListTabButton">Asset List</button>
+                <button onclick="openTab(event, 'tasksTab')" class="tab-button" id="tasksTabButton">Task Priority</button>
+                <button onclick="openTab(event, 'aboutTab')" class="tab-button" id="aboutTabButton">About Hale Pueo</button>
+            </nav>
+        </div>
+
+        <div id="loadingBox" class="hidden bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg relative mb-4 text-center" role="status"></div>
+        <div id="messageBox" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative mb-4 text-center" role="alert">
+            <strong class="font-bold">Success!</strong>
+            <span class="block sm:inline" id="successMessageText"></span>
+        </div>
+        <div id="errorBox" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4 text-center" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline" id="errorMessageText"></span>
+        </div>
+        <div id="activityMessageBox" class="hidden bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg relative mb-4 text-center">
+             <span class="block sm:inline" id="activityMessageText"></span>
+        </div>
+         <div id="taskMessageBox" class="hidden bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg relative mb-4 text-center">
+             <span class="block sm:inline" id="taskMessageText"></span>
+        </div>
+
+        <div id="dashboardTab" class="tab-content active">
+            <div id="farmMapViewport">
+                <img id="farmMapImage" src="https://i.imgur.com/wY5KCBV.jpeg" alt="Farm Basemap">
+                <div id="mapAssetOverlay">
+                </div>
+            </div>
+            <p class="text-center text-sm text-gray-500 italic">Click on a map marker to view details and log activity.</p>
+        </div>
+
+        <div id="assetListTab" class="tab-content">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">Full Asset List</h2>
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <input type="text" id="assetListSearch" class="form-input flex-grow p-2 border-gray-300 rounded-md" placeholder="Search assets by name or ID...">
+                <select id="assetTypeFilter" class="form-select p-2 border-gray-300 rounded-md">
+                    <option value="">All Types</option>
+                </select>
+            </div>
+            <div id="fullAssetListContainer" class="max-h-[70vh] overflow-y-auto space-y-2">
+            </div>
+        </div>
+
+
+        <div id="aboutTab" class="tab-content">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">About Hale Pueo Homestead</h2>
+            <div class="prose max-w-none text-gray-700">
+                <p>Welcome to Hale Pueo, our little slice of paradise in Hāna, Maui!</p>
+                <figure class="my-4 float-right ml-4 w-1/2 md:w-1/3 clear-right">
+                    <p class="text-sm text-center italic text-gray-600 mb-1">Basic Farm Layout (click image to enlarge)</p>
+                    <img src="https://i.imgur.com/YsWPqY9.jpeg"
+                         alt="Hale Pueo Farm Layout"
+                         class="rounded-lg shadow-md cursor-pointer"
+                         onclick="openImageZoomModal('https://i.imgur.com/YsWPqY9.jpeg')">
+                </figure>
+                <p>This homestead tracker is a digital companion to our efforts in cultivating a sustainable and productive 3-acre farm. We are home to a variety of fruit trees, a lively flock of chickens, and happy ducks enjoying the tropical environment.</p>
+                <h3 class="text-xl font-semibold mt-6 mb-2">Our Vision</h3>
+                <p>Our goal is to blend traditional farming wisdom with modern tools to create a thriving ecosystem. We believe in:
+                    <ul>
+                        <li>Sustainable practices that nurture the land.</li>
+                        <li>Growing a diverse range of foods for our family and community.</li>
+                        <li>Providing a healthy and happy environment for our animals.</li>
+                        <li>Continuously learning and adapting to the unique challenges and joys of farming in Hāna.</li>
+                    </ul>
+                </p>
+                <h3 class="text-xl font-semibold mt-6 mb-2">This Tracker</h3>
+                <p>This digital tool helps us:
+                    <ul>
+                        <li>Keep an inventory of our assets, from individual trees to our poultry.</li>
+                        <li>Track activities, maintenance schedules, and observations.</li>
+                        <li>Monitor the health and productivity of our plants and animals.</li>
+                        <li>Make informed decisions to improve our homesteading practices.</li>
+                        <li>Manage and prioritize tasks around the homestead.</li>
+                    </ul>
+                </p>
+                <p>Feel free to explore the dashboard to see what's happening on the farm!</p>
+            </div>
+        </div>
+
+        <div id="tasksTab" class="tab-content">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">Task Priority</h2>
+            <div class="mb-4">
+                <label for="showCompletedTasksToggle" class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="showCompletedTasksToggle" class="form-input rounded h-5 w-5 text-green-600 focus:ring-green-500" onchange="populateTasksDisplay()">
+                    <span class="ml-2 text-gray-700">Show Completed Tasks</span>
+                </label>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2">
+                    <h3 class="text-xl font-semibold mb-3">Task List</h3>
+                    <div id="taskListContainer" class="space-y-3 max-h-96 overflow-y-auto bg-white p-4 rounded-md border">
+                        <p class="text-gray-500">Loading tasks or no tasks found.</p>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-3">Add New Task</h3>
+                    <div id="addTaskForm" class="space-y-3 bg-white p-4 border rounded-md">
+                        <div>
+                            <label for="newTaskName" class="block text-sm font-medium text-gray-700">Task Name:</label>
+                            <input type="text" id="newTaskName" class="form-input mt-1 block w-full rounded-md p-2" placeholder="e.g., Prune Mango Trees">
+                        </div>
+                        <div>
+                            <label for="newTaskDescription" class="block text-sm font-medium text-gray-700">Description:</label>
+                            <textarea id="newTaskDescription" rows="3" class="form-textarea notes-textarea mt-1 block w-full rounded-md p-2" placeholder="Details about the task..."></textarea>
+                        </div>
+                        <div>
+                            <label for="newTaskDueDate" class="block text-sm font-medium text-gray-700">Due Date (Optional):</label>
+                            <input type="date" id="newTaskDueDate" class="form-date mt-1 block w-full rounded-md p-2">
+                        </div>
+                        <div>
+                            <label for="newTaskAssetId" class="block text-sm font-medium text-gray-700">Related Asset (Optional):</label>
+                            <select id="newTaskAssetId" class="form-select mt-1 block w-full rounded-md p-2">
+                                <option value="">None</option>
+                                {/* Asset options will be populated by JavaScript */}
+                            </select>
+                        </div>
+                         <div>
+                            <label for="newTaskMapZone" class="block text-sm font-medium text-gray-700">Map Zone (Optional):</label>
+                            <input type="text" id="newTaskMapZone" class="form-input mt-1 block w-full rounded-md p-2" placeholder="e.g., Orchard, Coop Area">
+                        </div>
+                        <div>
+                            <label for="newTaskPriority" class="block text-sm font-medium text-gray-700">Priority:</label>
+                            <select id="newTaskPriority" class="form-select mt-1 block w-full rounded-md p-2">
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                        <button id="saveTaskButton" onclick="saveNewTask()" class="action-button w-full">Add Task to Sheet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <p class="text-xs text-gray-500 mt-6 text-center">Note: Asset list is loaded from a Google Sheet. New activities and tasks are sent to a Google Apps Script to be saved.</p>
+    </div>
+
+    <div id="assetInfoModal" class="modal-overlay">
+        <div class="modal-content">
+            <button onclick="closeAssetModal()" class="modal-close-button">&times;</button>
+            <h3 id="modalAssetName" class="text-2xl font-semibold text-gray-700 mb-4">Asset Details</h3>
+            
+            <div id="modalStaticAssetInfo" class="mb-4 p-4 border border-gray-200 rounded-md bg-white">
+                <h4 class="font-semibold text-lg mb-2">Asset Information</h4>
+                <p><strong>ID:</strong> <span id="modalStaticAssetId"></span></p>
+                <p><strong>Name:</strong> <span id="modalStaticAssetName"></span></p>
+                <p><strong>Type:</strong> <span id="modalStaticAssetType"></span></p>
+                <p><strong>Description:</strong> <span id="modalStaticAssetDescription" class="text-sm text-gray-600 whitespace-pre-wrap"></span></p>
+                <hr class="my-3">
+                <p><strong>Last Activity Date:</strong> <span id="modalStaticAssetLastActivityDate"></span></p>
+                <div id="modalStaticAssetImageContainer" class="mt-2"></div>
+                <p class="mt-2"><strong>Latest Activity Notes:</strong> <span id="modalStaticAssetLatestNotes" class="text-sm text-gray-600 whitespace-pre-wrap"></span></p>
+            </div>
+
+            <hr class="my-6">
+
+            <div id="modalActivityTrackerSection">
+                <h4 class="font-semibold text-lg mb-3">Full Activity Log (Persists Across Sessions)</h4>
+                <div id="modalLatestActivityDisplay" class="mb-4 p-3 border border-dashed border-gray-300 rounded-md bg-gray-100 max-h-48 overflow-y-auto">
+                    <p class="text-center text-gray-500">Loading activities or no activities found for this asset.</p>
+                </div>
+                <h4 class="font-semibold text-lg mb-3 mt-6">Add New Activity</h4>
+                <div id="modalAddActivityForm" class="space-y-3 bg-white p-4 border rounded-md">
+                    <div>
+                        <label for="modalNewActivityDateTime" class="block text-sm font-medium text-gray-700">Date & Time of Activity:</label>
+                        <input type="datetime-local" id="modalNewActivityDateTime" class="form-datetime mt-1 block w-full rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="modalNewActivityNote" class="block text-sm font-medium text-gray-700">New Note:</label>
+                        <textarea id="modalNewActivityNote" rows="3" class="form-textarea notes-textarea mt-1 block w-full rounded-md p-2" placeholder="Enter activity details..."></textarea>
+                    </div>
+                    <div>
+                        <label for="modalNewActivityImageUrl" class="block text-sm font-medium text-gray-700">Photo URL (Direct Link):</label>
+                        <input type="url" id="modalNewActivityImageUrl" class="form-input mt-1 block w-full rounded-md p-2" placeholder="https://example.com/activity_image.jpg">
+                    </div>
+                    <button id="saveModalActivityButton" onclick="saveModalActivity()" class="action-button w-full">Save Activity to Sheet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="imageZoomModal" class="modal-overlay" onclick="closeImageZoomModal()">
+        <div class="modal-content p-2 relative" onclick="event.stopPropagation()">
+            <button onclick="closeImageZoomModal()" class="modal-close-button text-white hover:text-gray-300" style="top:0; right: 5px; font-size:2.5rem;">&times;</button>
+            <img id="zoomedImage" src="" alt="Zoomed Image" class="max-w-full max-h-full">
+        </div>
+    </div>
+
+
+    <script>
+        // --- Configuration ---
+        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXl17fkaqYmdxU7pJ00Z4WWkglWndAJFhyKDz-axqR2u4zeUQOfgFR94eqp5ZipCwGZ3Ycm1eBu7Tl/pub?gid=0&single=true&output=csv';
+        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx3zMYClFhZCyGoY0qHgxM89C4nskyvyqg-9R6nz5iw93mZ5XcgAt7nKlaPNzZCYr6C/exec';
+
+        // --- Global Variables ---
+        let farmData = {};
+        let assetActivities = {};
+        let taskListData = [];
+        let selectedAssetIdForModal = null;
+        
+        // DOM Elements
+        const messageBox = document.getElementById('messageBox');
+        const successMessageText = document.getElementById('successMessageText');
+        const loadingBox = document.getElementById('loadingBox');
+        const errorBox = document.getElementById('errorBox');
+        const errorMessageText = document.getElementById('errorMessageText');
+        const activityMessageBox = document.getElementById('activityMessageBox');
+        const activityMessageText = document.getElementById('activityMessageText');
+        const taskMessageBox = document.getElementById('taskMessageBox');
+        const taskMessageText = taskMessageBox ? taskMessageBox.querySelector('span') : null;
+
+        const farmMapViewport = document.getElementById('farmMapViewport');
+        const farmMapImage = document.getElementById('farmMapImage');
+        const mapAssetOverlay = document.getElementById('mapAssetOverlay');
+        
+        const modalAssetName = document.getElementById('modalAssetName');
+        const modalStaticAssetId = document.getElementById('modalStaticAssetId');
+        const modalStaticAssetName = document.getElementById('modalStaticAssetName');
+        const modalStaticAssetType = document.getElementById('modalStaticAssetType');
+        const modalStaticAssetDescription = document.getElementById('modalStaticAssetDescription');
+        const modalStaticAssetLastActivityDate = document.getElementById('modalStaticAssetLastActivityDate');
+        const modalStaticAssetImageContainer = document.getElementById('modalStaticAssetImageContainer');
+        const modalStaticAssetLatestNotes = document.getElementById('modalStaticAssetLatestNotes');
+        const modalLatestActivityDisplay = document.getElementById('modalLatestActivityDisplay');
+        const modalNewActivityDateTimeInput = document.getElementById('modalNewActivityDateTime');
+        const modalNewActivityNoteInput = document.getElementById('modalNewActivityNote');
+        const modalNewActivityImageUrlInput = document.getElementById('modalNewActivityImageUrl');
+        const saveModalActivityButton = document.getElementById('saveModalActivityButton');
+
+
+        const fullAssetListContainer = document.getElementById('fullAssetListContainer');
+        const assetListSearchInput = document.getElementById('assetListSearch');
+        const assetTypeFilterSelect = document.getElementById('assetTypeFilter');
+
+
+        const taskListContainer = document.getElementById('taskListContainer');
+        const newTaskNameInput = document.getElementById('newTaskName');
+        const newTaskDescriptionInput = document.getElementById('newTaskDescription');
+        const newTaskDueDateInput = document.getElementById('newTaskDueDate');
+        const newTaskAssetIdSelect = document.getElementById('newTaskAssetId'); // Changed to select
+        const newTaskMapZoneInput = document.getElementById('newTaskMapZone');
+        const newTaskPriorityInput = document.getElementById('newTaskPriority');
+        const showCompletedTasksToggle = document.getElementById('showCompletedTasksToggle');
+        const saveTaskButton = document.getElementById('saveTaskButton');
+
+        const imageZoomModal = document.getElementById('imageZoomModal');
+        const zoomedImage = document.getElementById('zoomedImage');
+
+
+        let renderedImageWidth = 0;
+        let renderedImageHeight = 0;
+        let imageOffsetX = 0;
+        let imageOffsetY = 0;
+
+
+        // --- Helper Functions (Moved Up) ---
+        function formatDateTimeForInput(isoString) {
+            if (!isoString) return '';
+            try {
+                const date = new Date(isoString);
+                const year = date.getFullYear();
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const day = date.getDate().toString().padStart(2, '0');
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            } catch (e) {
+                return '';
+            }
+        }
+        
+        function formatDisplayDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                return new Date(dateString).toLocaleString();
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        // --- Tab Switching Function ---
+        function openTab(event, tabName) {
+            let i, tabcontent, tabbuttons;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
+            }
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].classList.remove("active");
+            }
+            document.getElementById(tabName).style.display = "block";
+            document.getElementById(tabName).classList.add("active");
+            event.currentTarget.classList.add("active");
+
+            if (tabName === 'dashboardTab') {
+                setTimeout(calculateMapImageDimensionsAndRepopulate, 0);
+            }
+        }
+
+
+        // --- Other Helper Functions ---
+        function showLoading(isLoading, message = "Loading Data...") {
+            const loaderDiv = loadingBox.querySelector('.flex');
+            if (loaderDiv) {
+                 loaderDiv.innerHTML = `<div class="loader"></div><strong class="font-bold">${message.split('...')[0]}...</strong><span class="block sm:inline">${message.split('...')[1] || ''}</span>`;
+            } else {
+                loadingBox.innerHTML = `<div class="flex items-center justify-center"><div class="loader"></div><strong class="font-bold">${message.split('...')[0]}...</strong><span class="block sm:inline">${message.split('...')[1] || ''}</span></div>`;
+            }
+            loadingBox.classList.toggle('hidden', !isLoading);
+        }
+
+        function showUserMessage(element, textElement, message, isSuccess = true, duration = 5000) {
+            if (!element || !textElement) return;
+            element.classList.remove('hidden', 'bg-green-100', 'border-green-400', 'text-green-700', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-blue-100', 'border-blue-400', 'text-blue-700');
+            if (isSuccess === true) {
+                 element.classList.add('bg-green-100', 'border-green-400', 'text-green-700');
+                 if (element.querySelector('strong')) element.querySelector('strong').textContent = 'Success!';
+            } else if (isSuccess === false) {
+                element.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+                if (element.querySelector('strong')) element.querySelector('strong').textContent = 'Error!';
+            } else {
+                 element.classList.add('bg-blue-100', 'border-blue-400', 'text-blue-700');
+            }
+            textElement.textContent = message;
+            setTimeout(() => { element.classList.add('hidden'); }, duration);
+        }
+
+
+        // --- CSV Parsing Function ---
+        function csvToJSON(csvText) {
+            const trimmedCsvText = csvText.trim();
+            if (!trimmedCsvText) { return {}; }
+            const lines = trimmedCsvText.split('\n').map(line => line.trim()).filter(line => line);
+            if (lines.length < 2) { return {}; }
+            const headers = lines[0].split(',').map(header => header.trim().replace(/^"|"$/g, ''));
+            const jsonData = {};
+            for (let i = 1; i < lines.length; i++) {
+                const values = [];
+                let currentVal = '';
+                let inQuotes = false;
+                for (const char of lines[i]) {
+                    if (char === '"' && (lines[i][lines[i].indexOf(char) -1] !== '\\') ) {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(currentVal.trim().replace(/^"|"$/g, ''));
+                        currentVal = '';
+                    } else {
+                        currentVal += char;
+                    }
+                }
+                values.push(currentVal.trim().replace(/^"|"$/g, ''));
+                while (values.length < headers.length) { values.push('');}
+                const entry = {};
+                let assetId = '';
+                for (let j = 0; j < headers.length; j++) {
+                    const header = headers[j];
+                    const value = values[j] || '';
+                    if (header === 'assetId') assetId = value;
+                    entry[header] = value;
+                }
+                if (assetId) { jsonData[assetId] = entry; }
+            }
+            return jsonData;
+        }
+        
+        // --- Data Loading ---
+        async function loadInitialData() {
+            showLoading(true, "Loading initial asset data...");
+            try {
+                if (GOOGLE_SHEET_CSV_URL === 'YOUR_GOOGLE_SHEET_PUBLISHED_CSV_URL_HERE' || !GOOGLE_SHEET_CSV_URL) {
+                    throw new Error("CRITICAL: Google Sheet URL for asset list is not configured.");
+                }
+                const farmResponse = await fetch(GOOGLE_SHEET_CSV_URL);
+                if (!farmResponse.ok) {
+                    throw new Error(`HTTP error fetching asset list! Status: ${farmResponse.status}.`);
+                }
+                const farmCsvText = await farmResponse.text();
+                farmData = csvToJSON(farmCsvText);
+                if (Object.keys(farmData).length === 0 && farmCsvText.trim() !== '') {
+                   throw new Error("No asset data parsed. Check Asset Sheet CSV format/headers (assetId, name, type, description, etc).");
+                } else if (Object.keys(farmData).length === 0 && farmCsvText.trim() === '') {
+                    throw new Error("Asset Sheet CSV data empty.");
+                }
+                showUserMessage(messageBox, successMessageText, "Asset list loaded.", true, 3000);
+
+                await loadActivitiesFromSheet();
+                await loadTasksFromSheet();
+
+                calculateMapImageDimensionsAndRepopulate();
+                populateAssetList();
+                populateAssetTypeFilter();
+                populateTaskAssetIdDropdown(); // New
+                populateTasksDisplay();
+                
+            } catch (error) {
+                console.error("Load initial data error:", error);
+                let errorDetail = "See console for details.";
+                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
+                    errorDetail = error.message;
+                } else if (error && typeof error.toString === 'function') {
+                    const errStr = error.toString();
+                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
+                        errorDetail = errStr;
+                    }
+                }
+                showUserMessage(errorBox, errorMessageText, `Failed to load initial data: ${errorDetail}`, false);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function loadActivitiesFromSheet() {
+             if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
+                return;
+            }
+            try {
+                const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?action=getActivities`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error fetching activities! Status: ${response.status}.`);
+                }
+                const data = await response.json();
+                
+                if (data.status === "success" && data.activities) {
+                    assetActivities = {};
+                    data.activities.forEach(activity => {
+                        if (!assetActivities[activity.assetId]) {
+                            assetActivities[activity.assetId] = [];
+                        }
+                        if (!assetActivities[activity.assetId].find(a => a.activityId === activity.activityId)) {
+                            assetActivities[activity.assetId].push(activity);
+                        }
+                    });
+                    for (const assetIdKey in assetActivities) {
+                        assetActivities[assetIdKey].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
+                    }
+                    showUserMessage(messageBox, successMessageText, "Activities loaded.", true, 3000);
+                } else {
+                    throw new Error(data.message || "Failed to parse activities.");
+                }
+            } catch (error) {
+                console.error("Load activities error:", error);
+                let errorDetail = "See console for details.";
+                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
+                    errorDetail = error.message;
+                } else if (error && typeof error.toString === 'function') {
+                    const errStr = error.toString();
+                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
+                        errorDetail = errStr;
+                    }
+                }
+                showUserMessage(errorBox, errorMessageText, `Failed to load activities: ${errorDetail}`, false);
+            }
+        }
+
+        async function loadTasksFromSheet() {
+             if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
+                if(taskListContainer) taskListContainer.innerHTML = `<p class="text-gray-500">Task loading not configured.</p>`;
+                return;
+            }
+            try {
+                const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?action=getTasks`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error fetching tasks! Status: ${response.status}.`);
+                }
+                const data = await response.json();
+                if (data.status === "success" && data.tasks) {
+                    taskListData = data.tasks;
+                    showUserMessage(messageBox, successMessageText, "Tasks loaded successfully.", true, 3000);
+                    populateTasksDisplay();
+                } else {
+                    throw new Error(data.message || "Failed to parse tasks.");
+                }
+            } catch (error) {
+                console.error("Load tasks error:", error);
+                let errorDetail = "See console for details.";
+                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
+                    errorDetail = error.message;
+                } else if (error && typeof error.toString === 'function') {
+                    const errStr = error.toString();
+                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
+                        errorDetail = errStr;
+                    }
+                }
+                showUserMessage(errorBox, errorMessageText, `Failed to load tasks: ${errorDetail}`, false);
+                if(taskListContainer) taskListContainer.innerHTML = `<p class="text-red-500">Error loading tasks.</p>`;
+            }
+        }
+
+
+        // --- Map and Asset Marker Logic ---
+        function calculateMapImageDimensionsAndRepopulate() {
+            if (!farmMapImage || !farmMapViewport) return;
+            if (farmMapImage.complete && farmMapImage.naturalWidth > 0) {
+                const viewportWidth = farmMapViewport.clientWidth;
+                const viewportHeight = farmMapViewport.clientHeight;
+                const imageNaturalWidth = farmMapImage.naturalWidth;
+                const imageNaturalHeight = farmMapImage.naturalHeight;
+
+                const imageAspectRatio = imageNaturalWidth / imageNaturalHeight;
+                const viewportAspectRatio = viewportWidth / viewportHeight;
+
+                if (imageAspectRatio > viewportAspectRatio) {
+                    renderedImageWidth = viewportWidth;
+                    renderedImageHeight = viewportWidth / imageAspectRatio;
+                } else {
+                    renderedImageHeight = viewportHeight;
+                    renderedImageWidth = viewportHeight * imageAspectRatio;
+                }
+                imageOffsetX = (viewportWidth - renderedImageWidth) / 2;
+                imageOffsetY = (viewportHeight - renderedImageHeight) / 2;
+                populateFarmMap();
+            } else {
+                setTimeout(calculateMapImageDimensionsAndRepopulate, 200);
+            }
+        }
+
+
+        function populateFarmMap() {
+            if (!mapAssetOverlay || renderedImageWidth === 0 || renderedImageHeight === 0) {
+                return;
+            }
+            mapAssetOverlay.innerHTML = '';
+            
+            Object.keys(farmData).forEach(assetId => {
+                const asset = farmData[assetId];
+                const mapXPercent = parseFloat(asset.mapX);
+                const mapYPercent = parseFloat(asset.mapY);
+
+                if (!isNaN(mapXPercent) && !isNaN(mapYPercent)) {
+                    const markerLeft = imageOffsetX + (mapXPercent / 100) * renderedImageWidth;
+                    const markerTop = imageOffsetY + (mapYPercent / 100) * renderedImageHeight;
+
+                    const mapItem = document.createElement('div');
+                    mapItem.className = 'map-asset';
+                    mapItem.id = `map-item-${assetId}`;
+                    mapItem.style.left = `${markerLeft}px`;
+                    mapItem.style.top = `${markerTop}px`;
+                    mapItem.title = asset.name || assetId;
+                    
+                    let label = assetId.substring(0,1).toUpperCase();
+                    let itemClass = 'other';
+                    if (asset.type) {
+                        const assetTypeLower = asset.type.toLowerCase();
+                        if (assetTypeLower.includes('tree')) { itemClass = 'tree'; }
+                        else if (assetTypeLower.includes('plant') || assetTypeLower.includes('vegetable')) { itemClass = 'plant'; }
+                        else if (assetTypeLower.includes('poultry')) { itemClass = 'poultry'; }
+                        else if (assetTypeLower.includes('structure')) { itemClass = 'structure';}
+                        label = assetTypeLower.substring(0,1).toUpperCase();
+                    }
+                    mapItem.textContent = label;
+                    mapItem.classList.add(itemClass);
+                    
+                    mapItem.onclick = () => openAssetModal(assetId);
+                    mapAssetOverlay.appendChild(mapItem);
+                }
+            });
+        }
+        
+        // --- Asset List Tab Functions ---
+        function populateAssetTypeFilter() {
+            if (!assetTypeFilterSelect || Object.keys(farmData).length === 0) return;
+            
+            const types = new Set();
+            Object.values(farmData).forEach(asset => {
+                if (asset.type && asset.type.trim() !== '') {
+                    types.add(asset.type.trim());
+                }
+            });
+
+            while (assetTypeFilterSelect.options.length > 1) {
+                assetTypeFilterSelect.remove(1);
+            }
+
+            Array.from(types).sort().forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                assetTypeFilterSelect.appendChild(option);
+            });
+        }
+
+
+        function populateAssetList() {
+            if (!fullAssetListContainer) return;
+            fullAssetListContainer.innerHTML = '';
+            const searchTerm = assetListSearchInput ? assetListSearchInput.value.toLowerCase() : '';
+            const selectedType = assetTypeFilterSelect ? assetTypeFilterSelect.value : '';
+
+
+            const filteredAssetIds = Object.keys(farmData).filter(assetId => {
+                const asset = farmData[assetId];
+                const nameMatch = (asset.name && asset.name.toLowerCase().includes(searchTerm)) ||
+                                  (asset.assetId && asset.assetId.toLowerCase().includes(searchTerm));
+                const typeMatch = selectedType === '' || (asset.type && asset.type === selectedType);
+                return nameMatch && typeMatch;
+            });
+
+            if (filteredAssetIds.length === 0) {
+                fullAssetListContainer.innerHTML = `<p class="text-gray-500">No assets found${searchTerm || selectedType ? ' matching your criteria' : ''}.</p>`;
+                return;
+            }
+
+            filteredAssetIds.forEach(assetId => {
+                const asset = farmData[assetId];
+                const listItem = document.createElement('div');
+                listItem.className = 'asset-list-item';
+                listItem.onclick = () => openAssetModal(assetId);
+
+                let missingLocationFlag = '';
+                if (asset.mapX === undefined || asset.mapY === undefined || String(asset.mapX).trim() === '' || String(asset.mapY).trim() === '') {
+                    missingLocationFlag = `<span class="missing-location-flag">(No Location Data)</span>`;
+                }
+                
+                listItem.innerHTML = `
+                    <h4 class="font-semibold">${asset.name || assetId} ${missingLocationFlag}</h4>
+                    <p class="text-sm text-gray-600">ID: ${asset.assetId || 'N/A'}</p>
+                    <p class="text-sm text-gray-600">Type: ${asset.type || 'N/A'}</p>
+                    <p class="text-xs text-gray-500 mt-1 whitespace-pre-wrap">Description: ${asset.description || 'N/A'}</p>
+                `;
+                fullAssetListContainer.appendChild(listItem);
+            });
+        }
+
+        // --- NEW: Populate Task Asset ID Dropdown ---
+        function populateTaskAssetIdDropdown() {
+            if (!newTaskAssetIdSelect || Object.keys(farmData).length === 0) return;
+
+            // Clear existing options except the first "None" option
+            while (newTaskAssetIdSelect.options.length > 1) {
+                newTaskAssetIdSelect.remove(1);
+            }
+
+            Object.keys(farmData).sort((a,b) => (farmData[a].name || a).localeCompare(farmData[b].name || b) ).forEach(assetId => {
+                const asset = farmData[assetId];
+                const option = document.createElement('option');
+                option.value = asset.assetId;
+                option.textContent = `${asset.name || 'Unnamed Asset'} (${asset.assetId})`;
+                newTaskAssetIdSelect.appendChild(option);
+            });
+        }
+
+
+        // --- Modal Functions ---
+        function openAssetModal(assetId) {
+            selectedAssetIdForModal = assetId;
+            const asset = farmData[assetId];
+            if (!asset) {
+                showUserMessage(errorBox, errorMessageText, `Asset ${assetId} not found.`, false);
+                return;
+            }
+
+            document.querySelectorAll('.map-asset').forEach(item => item.classList.remove('selected-on-map'));
+            const mapItemEl = document.getElementById(`map-item-${assetId}`);
+            if (mapItemEl) mapItemEl.classList.add('selected-on-map');
+
+            modalAssetName.textContent = asset.name || assetId;
+            
+            modalStaticAssetId.textContent = asset.assetId || 'N/A';
+            modalStaticAssetName.textContent = asset.name || 'N/A';
+            modalStaticAssetType.textContent = asset.type || 'N/A';
+            modalStaticAssetDescription.textContent = asset.description || 'No description provided.';
+
+            let displayLastActivityDate = "No activity logged yet.";
+            let displayLatestNotes = "No recent activity notes.";
+            let displayImageUrl = asset.imageUrl || '';
+
+            if (assetActivities[selectedAssetIdForModal] && assetActivities[selectedAssetIdForModal].length > 0) {
+                const latestActivity = assetActivities[selectedAssetIdForModal][assetActivities[selectedAssetIdForModal].length - 1];
+                displayLastActivityDate = formatDisplayDateTime(latestActivity.userActivityTimestamp || latestActivity.timestamp);
+                displayLatestNotes = latestActivity.noteText || "No note for this latest activity.";
+                displayImageUrl = latestActivity.activityImageUrl ? latestActivity.activityImageUrl : (asset.imageUrl || '');
+            }
+
+            modalStaticAssetLastActivityDate.textContent = displayLastActivityDate;
+            modalStaticAssetLatestNotes.textContent = displayLatestNotes;
+            
+            modalStaticAssetImageContainer.innerHTML = '';
+            if (displayImageUrl) {
+                const img = document.createElement('img');
+                img.src = displayImageUrl;
+                img.alt = `Image for ${asset.name || assetId}`;
+                img.className = 'asset-image';
+                img.onerror = () => {
+                    modalStaticAssetImageContainer.innerHTML = `<p class="text-red-500 text-sm">Image load failed. Check URL: ${displayImageUrl}</p>`;
+                };
+                modalStaticAssetImageContainer.appendChild(img);
+            } else {
+                 modalStaticAssetImageContainer.innerHTML = `<p class="text-xs text-gray-400 italic">No image available.</p>`;
+            }
+
+            displayModalActivityLog(assetId);
+            
+            modalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
+            modalNewActivityNoteInput.value = '';
+            modalNewActivityImageUrlInput.value = '';
+
+            assetInfoModal.classList.add('active');
+        }
+
+        function closeAssetModal() {
+            assetInfoModal.classList.remove('active');
+            selectedAssetIdForModal = null;
+            document.querySelectorAll('.map-asset').forEach(item => item.classList.remove('selected-on-map'));
+        }
+
+        function displayModalActivityLog(assetIdToDisplay) {
+            modalLatestActivityDisplay.innerHTML = `<p class="text-center text-gray-500">No activities found for this asset.</p>`;
+            if (assetActivities[assetIdToDisplay] && assetActivities[assetIdToDisplay].length > 0) {
+                modalLatestActivityDisplay.innerHTML = '';
+                [...assetActivities[assetIdToDisplay]].reverse().forEach(activity => {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.className = 'activity-log-entry';
+                    const activityDateToDisplay = activity.userActivityTimestamp || activity.timestamp;
+                    entryDiv.innerHTML = `
+                        <p class="text-xs text-gray-500 mb-1">Activity Date: ${formatDisplayDateTime(activityDateToDisplay)}</p>
+                        ${activity.activityImageUrl ? `<img src="${activity.activityImageUrl}" alt="Activity Image" class="activity-image mb-2" onerror="this.alt='Img load fail'; this.style.display='none'; this.nextElementSibling.style.display='block';"><p class="text-red-500 text-sm hidden">Failed to load: ${activity.activityImageUrl}</p>` : ''}
+                        <p class="text-sm whitespace-pre-wrap">${activity.noteText || "No note for this activity."}</p>
+                    `;
+                    modalLatestActivityDisplay.appendChild(entryDiv);
+                });
+            }
+        }
+
+        async function saveModalActivity() {
+            if (!selectedAssetIdForModal) {
+                showUserMessage(activityMessageBox, activityMessageText, "Internal error: No asset selected for modal activity.", false);
+                return;
+            }
+            if (!saveModalActivityButton) return;
+            saveModalActivityButton.disabled = true;
+            saveModalActivityButton.textContent = 'Saving...';
+            
+            const userActivityTimestamp = modalNewActivityDateTimeInput.value ? new Date(modalNewActivityDateTimeInput.value).toISOString() : new Date().toISOString();
+            const noteText = modalNewActivityNoteInput.value.trim();
+            const activityImageUrl = modalNewActivityImageUrlInput.value.trim();
+
+            if (!noteText && !activityImageUrl && !modalNewActivityDateTimeInput.value) {
+                showUserMessage(activityMessageBox, activityMessageText, "Please enter some activity data (date, note, or image URL).", null);
+                saveModalActivityButton.disabled = false;
+                saveModalActivityButton.textContent = 'Save Activity to Sheet';
+                return;
+            }
+
+            const loggingTimestamp = new Date().toISOString();
+            const activityId = `ACT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+            const activityData = {
+                dataType: "activity",
+                loggingTimestamp: loggingTimestamp,
+                userActivityTimestamp: userActivityTimestamp,
+                assetId: selectedAssetIdForModal,
+                noteText: noteText,
+                activityImageUrl: activityImageUrl,
+                activityId: activityId
+            };
+            
+            showUserMessage(activityMessageBox, activityMessageText, "Saving activity...", null, 10000);
+
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8', },
+                    body: JSON.stringify(activityData)
+                });
+                
+                if (response.ok) {
+                    const responseText = await response.text();
+                    try {
+                        const jsonResponse = JSON.parse(responseText);
+                        if (jsonResponse.status === "success") {
+                             showUserMessage(activityMessageBox, activityMessageText, `Activity saved successfully! (ID: ${jsonResponse.activityId || activityId})`, true);
+                        } else {
+                            throw new Error(jsonResponse.message || "Apps Script reported an issue saving activity.");
+                        }
+                    } catch (e) {
+                        console.warn("Activity save: Apps Script response not valid JSON, but HTTP status was OK. Assuming success.", responseText);
+                        showUserMessage(activityMessageBox, activityMessageText, "Activity sent to sheet! (Check sheet for confirmation)", true);
+                    }
+
+                    if (!assetActivities[selectedAssetIdForModal]) {
+                        assetActivities[selectedAssetIdForModal] = [];
+                    }
+                    assetActivities[selectedAssetIdForModal].push(activityData);
+                    assetActivities[selectedAssetIdForModal].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
+
+                    openAssetModal(selectedAssetIdForModal);
+                    
+                } else {
+                    const errorText = await response.text();
+                    console.error("Server response error text (Activity):", errorText);
+                    throw new Error(`Failed to save activity. Server responded with ${response.status}.`);
+                }
+            } catch (error) {
+                console.error("Full error object during saveModalActivity:", error);
+                let errorDetail = "See console for details.";
+                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
+                    errorDetail = error.message;
+                } else if (error && typeof error.toString === 'function') {
+                    const errStr = error.toString();
+                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
+                        errorDetail = errStr;
+                    }
+                }
+                showUserMessage(activityMessageBox, activityMessageText, `Error saving activity: ${errorDetail}`, false);
+            } finally {
+                if (saveModalActivityButton) {
+                    saveModalActivityButton.disabled = false;
+                    saveModalActivityButton.textContent = 'Save Activity to Sheet';
+                }
+                modalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
+                modalNewActivityNoteInput.value = '';
+                modalNewActivityImageUrlInput.value = '';
+            }
+        }
+
+
+        // --- Task Management Functions ---
+        function populateTasksDisplay() {
+            if (!taskListContainer) return;
+            taskListContainer.innerHTML = '';
+            
+            const showCompleted = showCompletedTasksToggle ? showCompletedTasksToggle.checked : false;
+            
+            const filteredTasks = taskListData.filter(task => {
+                return showCompleted || task.status !== "Completed";
+            });
+
+            if (filteredTasks.length === 0) {
+                taskListContainer.innerHTML = `<p class="text-gray-500">${showCompleted ? 'No tasks found.' : 'No open tasks found. Toggle "Show Completed Tasks" to see all.'}</p>`;
+                return;
+            }
+
+            filteredTasks.sort((a, b) => {
+                const priorityOrder = { "High": 0, "Medium": 1, "Low": 2, "": 3 };
+                if (priorityOrder[a.priority || ""] !== priorityOrder[b.priority || ""]) {
+                    return priorityOrder[a.priority || ""] - priorityOrder[b.priority || ""];
+                }
+                const dateA = a.dueDate ? new Date(a.dueDate) : (a.status === "Completed" ? new Date(0) : new Date(8640000000000000));
+                const dateB = b.dueDate ? new Date(b.dueDate) : (b.status === "Completed" ? new Date(0) : new Date(8640000000000000));
+                
+                if (a.status === "Completed" && b.status !== "Completed") return 1;
+                if (a.status !== "Completed" && b.status === "Completed") return -1;
+
+                if (a.status === "Completed" && b.status === "Completed") {
+                    const compDateA = a.completedDate ? new Date(a.completedDate) : new Date(0);
+                    const compDateB = b.completedDate ? new Date(b.completedDate) : new Date(0);
+                    return compDateB - compDateA;
+                }
+                return dateA - dateB;
+            });
+
+
+            filteredTasks.forEach(task => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = `task-list-item p-3 border rounded-md bg-gray-50 shadow-sm ${task.status === "Completed" ? 'opacity-70' : ''}`;
+                
+                let priorityClass = '';
+                switch (task.priority) {
+                    case 'High': priorityClass = 'priority-High'; break;
+                    case 'Medium': priorityClass = 'priority-Medium'; break;
+                    case 'Low': priorityClass = 'priority-Low'; break;
+                }
+
+                const isCompleted = task.status === "Completed";
+
+                taskDiv.innerHTML = `
+                    <div class="flex items-start">
+                        <input type="checkbox" id="task-complete-${task.taskId}" class="form-input h-5 w-5 text-green-600 focus:ring-green-500 mr-3 mt-1" 
+                               onchange="handleTaskCompletionChange('${task.taskId}', this.checked)" ${isCompleted ? 'checked' : ''}>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-md ${priorityClass} ${isCompleted ? 'task-completed' : ''}">${task.displayName || 'Unnamed Task'} 
+                                <span class="text-xs text-gray-400 ml-2">(ID: ${task.taskId})</span>
+                            </h4>
+                            <p class="text-sm text-gray-600 whitespace-pre-wrap ${isCompleted ? 'task-completed' : ''}">${task.description || 'No description.'}</p>
+                            <div class="text-xs text-gray-500 mt-2">
+                                ${task.dueDate ? `<span>Due: ${formatDisplayDateTime(task.dueDate)}</span>` : ''}
+                                ${task.assetId ? `<span class="ml-2">Asset: ${farmData[task.assetId] ? farmData[task.assetId].name : task.assetId}</span>` : ''}
+                                ${task.mapZone ? `<span class="ml-2">Zone: ${task.mapZone}</span>` : ''}
+                                <br><span>Created: ${formatDisplayDateTime(task.createdDate)}</span>
+                                ${isCompleted && task.completedDate ? `<br><span class="text-green-600">Completed: ${formatDisplayDateTime(task.completedDate)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                taskListContainer.appendChild(taskDiv);
+            });
+        }
+
+        async function handleTaskCompletionChange(taskId, isChecked) {
+            const newStatus = isChecked ? "Completed" : "Open";
+            
+            showUserMessage(taskMessageBox, taskMessageText, `Updating task ${taskId} to ${newStatus}...`, null, 10000);
+
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: "updateTaskStatus",dataType: "task", taskId: taskId, status: newStatus })
+                });
+
+                if (response.ok) {
+                    const responseText = await response.text();
+                    let success = false;
+                    try {
+                        const jsonResponse = JSON.parse(responseText);
+                        if (jsonResponse.status === "success") {
+                            showUserMessage(taskMessageBox, taskMessageText, `Task ${taskId} marked as ${newStatus}.`, true);
+                            success = true;
+                        } else {
+                            throw new Error(jsonResponse.message || "Apps Script reported an issue updating task status.");
+                        }
+                    } catch (e) {
+                         console.warn("Update Task Status: Apps Script response not valid JSON, but HTTP status was OK. Assuming success.", responseText);
+                         showUserMessage(taskMessageBox, taskMessageText, `Task ${taskId} status update sent. (Check sheet for confirmation)`, true);
+                         success = true;
+                    }
+
+                    if(success){
+                        const taskIndex = taskListData.findIndex(t => t.taskId === taskId);
+                        if (taskIndex > -1) {
+                            taskListData[taskIndex].status = newStatus;
+                            taskListData[taskIndex].completedDate = newStatus === "Completed" ? new Date().toISOString() : "";
+                        }
+                        populateTasksDisplay();
+                    }
+
+                } else {
+                    const errorText = await response.text();
+                    console.error("Server response error text (Update Task Status):", errorText);
+                    throw new Error(`Failed to update task status. Server responded with ${response.status}.`);
+                }
+            } catch (error) {
+                console.error("Full error object during handleTaskCompletionChange:", error);
+                let errorDetail = "See console for details.";
+                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
+                    errorDetail = error.message;
+                } else if (error && typeof error.toString === 'function') {
+                    const errStr = error.toString();
+                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
+                        errorDetail = errStr;
+                    }
+                }
+                showUserMessage(taskMessageBox, taskMessageText, `Error updating task status: ${errorDetail}`, false);
+                const checkbox = document.getElementById(`task-complete-${taskId}`);
+                if(checkbox) checkbox.checked = !isChecked;
+            }
+        }
+
+
+        async function saveNewTask() {
+            if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
+                showUserMessage(taskMessageBox, taskMessageText, "Task saving is not configured (Apps Script URL missing).", false);
+                return;
+            }
+            if (!saveTaskButton) return;
+            saveTaskButton.disabled = true;
+            saveTaskButton.textContent = "Saving...";
+
+
+            const displayName = newTaskNameInput.value.trim();
+            const description = newTaskDescriptionInput.value.trim();
+            const dueDate = newTaskDueDateInput.value;
+            const assetId = newTaskAssetIdSelect.value; // Changed to read from select
+            const mapZone = newTaskMapZoneInput.value.trim();
+            const priority = newTaskPriorityInput.value;
+
+            if (!displayName) {
+                showUserMessage(taskMessageBox, taskMessageText, "Please enter a task name.", null);
+                saveTaskButton.disabled = false;
+                saveTaskButton.textContent = "Add Task to Sheet";
+                return;
+            }
+
+            const taskId = `TASK-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+            const createdDate = new Date().toISOString();
+
+            const taskData = {
+                dataType: "task",
+                action: "createTask",
+                taskId: taskId,
+                displayName: displayName,
+                description: description,
+                dueDate: dueDate,
+                createdDate: createdDate,
+                mapZone: mapZone,
+                assetId: assetId,
+                priority: priority
+            };
+
+            showUserMessage(taskMessageBox, taskMessageText, "Saving new task...", null, 10000);
+
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(taskData)
+                });
+
+                if (response.ok) {
+                    const responseText = await response.text();
+                     try {
+                        const jsonResponse = JSON.parse(responseText);
+                        if (jsonResponse.status === "success") {
+                             showUserMessage(taskMessageBox, taskMessageText, `Task "${displayName}" saved successfully! (ID: ${jsonResponse.taskId || taskId})`, true);
+                        } else {
+                            throw new Error(jsonResponse.message || "Apps Script reported an issue saving task.");
+                        }
+                    } catch (e) {
+                        console.warn("Task save: Apps Script response not valid JSON, but HTTP status was OK. Assuming success.", responseText);
+                        showUserMessage(taskMessageBox, taskMessageText, "Task sent to sheet! (Check sheet for confirmation)", true);
+                    }
+                    
+                    const newTaskForLocal = {...taskData, status: "Open", completedDate: ""};
+                    delete newTaskForLocal.action;
+                    delete newTaskForLocal.dataType;
+
+                    taskListData.push(newTaskForLocal);
+                    populateTasksDisplay();
+
+                    newTaskNameInput.value = '';
+                    newTaskDescriptionInput.value = '';
+                    newTaskDueDateInput.value = '';
+                    newTaskAssetIdSelect.value = ''; // Reset select
+                    newTaskMapZoneInput.value = '';
+                    newTaskPriorityInput.value = 'Medium';
+
+                } else {
+                    const errorText = await response.text();
+                    console.error("Server response error text (Task):", errorText);
+                    throw new Error(`Failed to save task. Server responded with ${response.status}.`);
+                }
+            } catch (error) {
+                console.error("Full error object during saveNewTask:", error);
+                let errorDetail = "See console for details.";
+                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
+                    errorDetail = error.message;
+                } else if (error && typeof error.toString === 'function') {
+                    const errStr = error.toString();
+                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
+                        errorDetail = errStr;
+                    }
+                }
+                showUserMessage(taskMessageBox, taskMessageText, `Error saving task: ${errorDetail}`, false);
+            } finally {
+                 if (saveTaskButton) {
+                    saveTaskButton.disabled = false;
+                    saveTaskButton.textContent = "Add Task to Sheet";
+                }
+            }
+        }
+
+        // --- Image Zoom Modal Functions ---
+        function openImageZoomModal(imageUrl) {
+            if (zoomedImage && imageZoomModal) {
+                zoomedImage.src = imageUrl;
+                imageZoomModal.classList.add('active');
+            }
+        }
+        function closeImageZoomModal() {
+            if (imageZoomModal) {
+                imageZoomModal.classList.remove('active');
+                if(zoomedImage) zoomedImage.src = "";
+            }
+        }
+
+
+        window.onload = () => {
+            document.getElementById('dashboardTabButton').click();
+            loadInitialData();
+            if(showCompletedTasksToggle) {
+                showCompletedTasksToggle.addEventListener('change', populateTasksDisplay);
+            }
+            if(assetListSearchInput && assetTypeFilterSelect) {
+                assetListSearchInput.addEventListener('input', () => populateAssetList()); // Pass no args to use current values
+                assetTypeFilterSelect.addEventListener('change', () => populateAssetList()); // Pass no args
+            }
+            window.addEventListener('resize', calculateMapImageDimensionsAndRepopulate);
+            if (farmMapImage) {
+                farmMapImage.onload = calculateMapImageDimensionsAndRepopulate;
+                if (farmMapImage.complete) {
+                    calculateMapImageDimensionsAndRepopulate();
+                }
+            }
+        };
+    </script>
+
+</body>
+</html>
+
