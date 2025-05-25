@@ -165,12 +165,12 @@
         .notes-textarea {
             min-height: 80px;
         }
-        .activity-log-entry, .task-list-item {
+        .activity-log-entry, .task-list-item, .recent-activity-item {
             border-bottom: 1px solid #eee;
             padding-bottom: 0.75rem;
             margin-bottom: 0.75rem;
         }
-        .activity-log-entry:last-child, .task-list-item:last-child {
+        .activity-log-entry:last-child, .task-list-item:last-child, .recent-activity-item:last-child {
             border-bottom: none;
             margin-bottom: 0;
         }
@@ -317,7 +317,7 @@
         <div class="mb-6 border-b border-gray-300">
             <nav class="flex -mb-px" aria-label="Tabs">
                 <button onclick="openTab(event, 'dashboardTab')" class="tab-button active" id="dashboardTabButton">Dashboard</button>
-                <button onclick="openTab(event, 'assetListTab')" class="tab-button" id="assetListTabButton">Asset List</button>
+                <button onclick="openTab(event, 'recentActivityTab')" class="tab-button" id="recentActivityTabButton">Recent Activity</button>
                 <button onclick="openTab(event, 'tasksTab')" class="tab-button" id="tasksTabButton">Task Priority</button>
                 <button onclick="openTab(event, 'aboutTab')" class="tab-button" id="aboutTabButton">About Hale Pueo</button>
             </nav>
@@ -345,15 +345,10 @@
             <p class="text-center text-sm text-gray-500 italic">Click on a map marker to view details and log activity.</p>
         </div>
 
-        <div id="assetListTab" class="tab-content">
-            <h2 class="text-3xl font-semibold text-gray-800 mb-4">Full Asset List</h2>
-            <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                <input type="text" id="assetListSearch" class="form-input flex-grow p-2 border-gray-300 rounded-md" placeholder="Search assets by name or ID...">
-                <select id="assetTypeFilter" class="form-select p-2 border-gray-300 rounded-md">
-                    <option value="">All Types</option>
-                </select>
-            </div>
-            <div id="fullAssetListContainer" class="max-h-[70vh] overflow-y-auto space-y-2">
+        <div id="recentActivityTab" class="tab-content">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">Recent Homestead Activities</h2>
+            <div id="recentActivityContainer" class="max-h-[75vh] overflow-y-auto space-y-4">
+                <p class="text-gray-500">Loading recent activities...</p>
             </div>
         </div>
 
@@ -464,16 +459,14 @@
             
             <div id="modalStaticAssetInfo" class="mb-4 p-4 border border-gray-200 rounded-md bg-white">
                 <h4 class="font-semibold text-lg mb-2">Asset Information</h4>
-                <p><strong>ID:</strong> <span id="modalStaticAssetId">N/A</span></p>
-                <p><strong>Name:</strong> <span id="modalStaticAssetName">N/A</span></p>
-                <p><strong>Type:</strong> <span id="modalStaticAssetType">N/A</span></p>
-                <p><strong>Description:</strong> <span id="modalStaticAssetDescription" class="text-sm text-gray-600 whitespace-pre-wrap">N/A</span></p>
+                <p><strong>ID:</strong> <span id="modalStaticAssetId"></span></p>
+                <p><strong>Name:</strong> <span id="modalStaticAssetName"></span></p>
+                <p><strong>Type:</strong> <span id="modalStaticAssetType"></span></p>
+                <p><strong>Description:</strong> <span id="modalStaticAssetDescription" class="text-sm text-gray-600 whitespace-pre-wrap"></span></p>
                 <hr class="my-3">
-                <p><strong>Last Activity Date:</strong> <span id="modalStaticAssetLastActivityDate">N/A</span></p>
-                <div id="modalStaticAssetImageContainer" class="mt-2">
-                    <p class="text-xs text-gray-400 italic">No image available.</p>
-                </div>
-                <p class="mt-2"><strong>Latest Activity Notes:</strong> <span id="modalStaticAssetLatestNotes" class="text-sm text-gray-600 whitespace-pre-wrap">N/A</span></p>
+                <p><strong>Last Activity Date:</strong> <span id="modalStaticAssetLastActivityDate"></span></p>
+                <div id="modalStaticAssetImageContainer" class="mt-2"></div>
+                <p class="mt-2"><strong>Latest Activity Notes:</strong> <span id="modalStaticAssetLatestNotes" class="text-sm text-gray-600 whitespace-pre-wrap"></span></p>
             </div>
 
             <hr class="my-6">
@@ -555,7 +548,7 @@
             modalStaticAssetLatestNotes, modalLatestActivityDisplay,
             modalNewActivityDateTimeInput, modalNewActivityNoteInput,
             modalNewActivityImageFileInput, modalNewActivityImagePreview, saveModalActivityButton,
-            fullAssetListContainer, assetListSearchInput, assetTypeFilterSelect,
+            recentActivityContainer,
             taskListContainer, newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput,
             newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput,
             showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage,
@@ -581,8 +574,7 @@
                  if (!activityMessageText) console.error("CRITICAL CACHE ERROR: activityMessageText not found");
             taskMessageBox = document.getElementById('taskMessageBox');
             taskMessageText = taskMessageBox ? taskMessageBox.querySelector('span') : null;
-                 if (!taskMessageText && taskMessageBox) console.warn("CACHE WARNING: taskMessageText (span inside taskMessageBox) not found"); // Changed to warn as it's for user messages
-
+                 if (!taskMessageText && taskMessageBox) console.warn("CACHE WARNING: taskMessageText (span inside taskMessageBox) not found");
 
             farmMapViewport = document.getElementById('farmMapViewport');
                 if (!farmMapViewport) console.error("CRITICAL CACHE ERROR: farmMapViewport not found");
@@ -616,12 +608,8 @@
             saveModalActivityButton = document.getElementById('saveModalActivityButton');
                 if (!saveModalActivityButton) console.error("CRITICAL CACHE ERROR: saveModalActivityButton not found");
 
-            fullAssetListContainer = document.getElementById('fullAssetListContainer');
-                if (!fullAssetListContainer) console.error("CRITICAL CACHE ERROR: fullAssetListContainer not found");
-            assetListSearchInput = document.getElementById('assetListSearch');
-                if (!assetListSearchInput) console.error("CRITICAL CACHE ERROR: assetListSearchInput not found");
-            assetTypeFilterSelect = document.getElementById('assetTypeFilter');
-                if (!assetTypeFilterSelect) console.error("CRITICAL CACHE ERROR: assetTypeFilterSelect not found");
+            recentActivityContainer = document.getElementById('recentActivityContainer');
+                if (!recentActivityContainer) console.error("CRITICAL CACHE ERROR: recentActivityContainer not found");
 
             taskListContainer = document.getElementById('taskListContainer');
                 if (!taskListContainer) console.error("CRITICAL CACHE ERROR: taskListContainer not found");
@@ -684,7 +672,7 @@
         }
 
         function showLoading(isLoading, message = "Loading Data...") {
-            if (!loadingBox) { console.error("loadingBox not found"); return; }
+            if (!loadingBox) { console.error("loadingBox not found for showLoading"); return; }
             const loaderDiv = loadingBox.querySelector('.flex');
             if (loaderDiv) {
                  loaderDiv.innerHTML = `<div class="loader"></div><strong class="font-bold">${message.split('...')[0]}...</strong><span class="block sm:inline">${message.split('...')[1] || ''}</span>`;
@@ -714,13 +702,19 @@
         }
         
         function getErrorMessage(error) {
-            let errorDetail = "See console for details.";
-            if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
-                errorDetail = error.message;
-            } else if (error && typeof error.toString === 'function') {
-                const errStr = error.toString();
-                if (errStr.trim() !== '' && errStr !== "[object Object]") {
-                    errorDetail = errStr;
+            let errorDetail = "An unknown error occurred. Check console.";
+            if (error) {
+                if (error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
+                    errorDetail = error.message;
+                } else if (typeof error.toString === 'function') {
+                    const errStr = error.toString();
+                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
+                        errorDetail = errStr;
+                    } else {
+                        errorDetail = "Error object found, see console for more details.";
+                    }
+                } else if (typeof error === 'string' && error.trim() !== '') {
+                    errorDetail = error;
                 }
             }
             return errorDetail;
@@ -813,8 +807,7 @@
                 await loadActivitiesFromSheet();
                 await loadTasksFromSheet();
                 
-                populateAssetList();
-                populateAssetTypeFilter();
+                populateRecentActivityLog();
                 populateTaskAssetIdDropdown();
                 populateTasksDisplay();
                 
@@ -851,6 +844,7 @@
                         assetActivities[assetIdKey].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
                     }
                     showUserMessage(messageBox, successMessageText, "Activities loaded.", true, 3000);
+                    populateRecentActivityLog();
                 } else {
                     throw new Error(data.message || "Failed to parse activities.");
                 }
@@ -972,68 +966,57 @@
         }
 
 
-        function populateAssetTypeFilter() {
-            if (!assetTypeFilterSelect || Object.keys(farmData).length === 0) return;
-            
-            const types = new Set();
-            Object.values(farmData).forEach(asset => {
-                if (asset.type && asset.type.trim() !== '') {
-                    types.add(asset.type.trim());
-                }
-            });
+        function populateRecentActivityLog(limit = 10) {
+            if (!recentActivityContainer) {
+                console.error("Recent activity container not found in DOM.");
+                return;
+            }
+            recentActivityContainer.innerHTML = '';
 
-            while (assetTypeFilterSelect.options.length > 1) {
-                assetTypeFilterSelect.remove(1);
+            let allActivitiesFlat = [];
+            for (const assetId in assetActivities) {
+                assetActivities[assetId].forEach(activity => {
+                    allActivitiesFlat.push({
+                        ...activity,
+                        assetName: farmData[assetId]?.name || assetId,
+                    });
+                });
             }
 
-            Array.from(types).sort().forEach(type => {
-                const option = document.createElement('option');
-                option.value = type;
-                option.textContent = type;
-                assetTypeFilterSelect.appendChild(option);
-            });
-        }
-
-
-        function populateAssetList() {
-            if (!fullAssetListContainer) return;
-            fullAssetListContainer.innerHTML = '';
-            const searchTerm = assetListSearchInput ? assetListSearchInput.value.toLowerCase() : '';
-            const selectedType = assetTypeFilterSelect ? assetTypeFilterSelect.value : '';
-
-            const filteredAssetIds = Object.keys(farmData).filter(assetId => {
-                const asset = farmData[assetId];
-                const nameMatch = (asset.name && asset.name.toLowerCase().includes(searchTerm)) ||
-                                  (asset.assetId && asset.assetId.toLowerCase().includes(searchTerm));
-                const typeMatch = selectedType === '' || (asset.type && asset.type === selectedType);
-                return nameMatch && typeMatch;
-            });
-
-            if (filteredAssetIds.length === 0) {
-                fullAssetListContainer.innerHTML = `<p class="text-gray-500">No assets found${searchTerm || selectedType ? ' matching your criteria' : ''}.</p>`;
+            if (allActivitiesFlat.length === 0) {
+                recentActivityContainer.innerHTML = '<p class="text-gray-500">No activities logged yet across all assets.</p>';
                 return;
             }
 
-            filteredAssetIds.sort((a, b) => (farmData[a].name || a).localeCompare(farmData[b].name || b)).forEach(assetId => {
-                const asset = farmData[assetId];
-                const listItem = document.createElement('div');
-                listItem.className = 'asset-list-item';
-                listItem.onclick = () => openAssetModal(assetId);
+            allActivitiesFlat.sort((a, b) =>
+                new Date(b.userActivityTimestamp || b.timestamp) - new Date(a.userActivityTimestamp || a.timestamp)
+            );
 
-                let missingLocationFlag = '';
-                if (asset.lat === undefined || asset.lon === undefined || String(asset.lat).trim() === '' || String(asset.lon).trim() === '') {
-                    missingLocationFlag = `<span class="missing-location-flag">(No Lat/Lon Data)</span>`;
-                }
+            const activitiesToDisplay = allActivitiesFlat.slice(0, limit);
+
+            activitiesToDisplay.forEach(activity => {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'recent-activity-item p-4 border rounded-md bg-gray-50 shadow-sm';
                 
-                listItem.innerHTML = `
-                    <h4 class="font-semibold">${asset.name || assetId} ${missingLocationFlag}</h4>
-                    <p class="text-sm text-gray-600">ID: ${asset.assetId || 'N/A'}</p>
-                    <p class="text-sm text-gray-600">Type: ${asset.type || 'N/A'}</p>
-                    <p class="text-xs text-gray-500 mt-1 whitespace-pre-wrap">Description: ${asset.description || 'N/A'}</p>
+                const activityDateToDisplay = activity.userActivityTimestamp || activity.timestamp;
+                let imgHTML = '';
+                if (activity.activityImageUrl) {
+                    imgHTML = `<img src="${activity.activityImageUrl}" alt="Activity for ${activity.assetName}" class="activity-image my-2" 
+                                    onerror="this.alt='Img load fail'; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                               <p class="text-red-500 text-sm hidden">Failed to load: ${activity.activityImageUrl}</p>`;
+                }
+
+                entryDiv.innerHTML = `
+                    <h4 class="font-semibold text-md">${activity.assetName} <span class="text-xs text-gray-400">(${activity.assetId})</span></h4>
+                    <p class="text-xs text-gray-500 mb-1">Activity Date: ${formatDisplayDateTime(activityDateToDisplay)}</p>
+                    ${imgHTML}
+                    <p class="text-sm whitespace-pre-wrap">${activity.noteText || "No note for this activity."}</p>
+                    <button class="text-blue-500 hover:underline text-xs mt-2" onclick="openAssetModal('${activity.assetId}')">View Asset & Full Log</button>
                 `;
-                fullAssetListContainer.appendChild(listItem);
+                recentActivityContainer.appendChild(entryDiv);
             });
         }
+
 
         function populateTaskAssetIdDropdown() {
             if (!newTaskAssetIdSelect || Object.keys(farmData).length === 0) return;
@@ -1277,7 +1260,8 @@
                     assetActivities[selectedAssetIdForModal].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
 
                     openAssetModal(selectedAssetIdForModal);
-                    
+                    populateRecentActivityLog();
+
                 } else {
                     const errorText = await response.text();
                     console.error("Server response error text (Activity):", errorText);
@@ -1432,7 +1416,6 @@
                 showUserMessage(taskMessageBox, taskMessageText, "Task saving is not configured (Apps Script URL missing).", false);
                 return;
             }
-             // Ensure saveTaskButton is cached before using it
             if (!saveTaskButton) {
                 console.error("CRITICAL: saveTaskButton element is not cached or missing from DOM.");
                 showUserMessage(taskMessageBox, taskMessageText, "Task form error (Save button missing). Please refresh.", false);
@@ -1449,7 +1432,7 @@
 
             for (const key in requiredInputs) {
                 if (!requiredInputs[key]) {
-                    console.error(`CRITICAL SAVE ERROR: ${key} element is null. Caching may have failed or ID is incorrect.`);
+                    console.error(`CRITICAL SAVE ERROR: Task form element variable '${key}' is null. Check ID and cacheDOMElements().`);
                     showUserMessage(taskMessageBox, taskMessageText, `Task form error (element ${key} is missing). Please refresh.`, false);
                     saveTaskButton.disabled = false;
                     saveTaskButton.textContent = "Add Task to Sheet";
@@ -1462,7 +1445,7 @@
             const description = newTaskDescriptionInput.value.trim();
             const dueDate = newTaskDueDateInput.value;
             const assetId = newTaskAssetIdSelect.value;
-            const mapZone = newTaskMapZoneInput.value.trim(); // This was the one erroring
+            const mapZone = newTaskMapZoneInput.value.trim();
             const priority = newTaskPriorityInput.value;
             const taskLat = newTaskLatInput.value.trim();
             const taskLon = newTaskLonInput.value.trim();
@@ -1566,18 +1549,22 @@
         }
 
 
-        window.onload = () => {
+        document.addEventListener('DOMContentLoaded', () => {
             cacheDOMElements();
-            document.getElementById('dashboardTabButton').click();
+            
+            const dashboardTabButton = document.getElementById('dashboardTabButton');
+            if (dashboardTabButton) {
+                dashboardTabButton.click();
+            } else {
+                console.error("Dashboard tab button not found on DOMContentLoaded!");
+            }
+            
             loadInitialData();
             
             if(showCompletedTasksToggle) {
                 showCompletedTasksToggle.addEventListener('change', populateTasksDisplay);
             }
-            if(assetListSearchInput && assetTypeFilterSelect) {
-                assetListSearchInput.addEventListener('input', () => populateAssetList());
-                assetTypeFilterSelect.addEventListener('change', () => populateAssetList());
-            }
+            
             if (modalNewActivityImageFileInput) {
                 modalNewActivityImageFileInput.addEventListener('change', (event) => {
                     const file = event.target.files[0];
@@ -1604,7 +1591,7 @@
                     }
                 });
             }
-        };
+        });
     </script>
 
 </body>
