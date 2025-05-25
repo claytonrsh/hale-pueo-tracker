@@ -44,11 +44,11 @@
             display: block;
         }
 
-        .form-input, .form-textarea, .form-date, .form-datetime, .form-select {
+        .form-input, .form-textarea, .form-date, .form-datetime, .form-select, .form-file { /* Added form-file */
             border-color: #c7c7c7;
             transition: border-color 0.3s ease;
         }
-        .form-input:focus, .form-textarea:focus, .form-date:focus, .form-datetime:focus, .form-select:focus {
+        .form-input:focus, .form-textarea:focus, .form-date:focus, .form-datetime:focus, .form-select:focus, .form-file:focus {
             border-color: #8db580;
             box-shadow: 0 0 0 2px rgba(141, 181, 128, 0.3);
             outline: none;
@@ -147,7 +147,7 @@
             transform: translate(-50%, -50%) scale(1.4);
             z-index: 20;
         }
-        .asset-image, .activity-image {
+        .asset-image, .activity-image, #modalNewActivityImagePreview {
             max-width: 100%;
             max-height: 200px;
             border-radius: 8px;
@@ -155,6 +155,9 @@
             margin-bottom: 0.5rem;
             border: 1px solid #ddd;
             object-fit: cover;
+        }
+        #modalNewActivityImagePreview:empty, #modalNewActivityImagePreview[src="#"] { /* Hide preview if no src or placeholder */
+            display: none;
         }
         .notes-textarea {
             min-height: 80px;
@@ -390,7 +393,6 @@
                             <label for="newTaskAssetId" class="block text-sm font-medium text-gray-700">Related Asset (Optional):</label>
                             <select id="newTaskAssetId" class="form-select mt-1 block w-full rounded-md p-2">
                                 <option value="">None</option>
-                                {/* Asset options will be populated by JavaScript */}
                             </select>
                         </div>
                          <div>
@@ -449,8 +451,14 @@
                         <textarea id="modalNewActivityNote" rows="3" class="form-textarea notes-textarea mt-1 block w-full rounded-md p-2" placeholder="Enter activity details..."></textarea>
                     </div>
                     <div>
-                        <label for="modalNewActivityImageUrl" class="block text-sm font-medium text-gray-700">Photo URL (Direct Link):</label>
-                        <input type="url" id="modalNewActivityImageUrl" class="form-input mt-1 block w-full rounded-md p-2" placeholder="https://example.com/activity_image.jpg">
+                        <label for="modalNewActivityImageFile" class="block text-sm font-medium text-gray-700">Upload Photo (Optional):</label>
+                        <input type="file" id="modalNewActivityImageFile" class="form-file mt-1 block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-green-50 file:text-green-700
+                                hover:file:bg-green-100" accept="image/*">
+                        <img id="modalNewActivityImagePreview" src="#" alt="Image Preview" class="mt-2 hidden" style="max-height: 150px;"/>
                     </div>
                     <button id="saveModalActivityButton" onclick="saveModalActivity()" class="action-button w-full">Save Activity to Sheet</button>
                 </div>
@@ -476,54 +484,72 @@
         let assetActivities = {};
         let taskListData = [];
         let selectedAssetIdForModal = null;
+        let newActivitySelectedFile = null;
         
-        // DOM Elements
-        const messageBox = document.getElementById('messageBox');
-        const successMessageText = document.getElementById('successMessageText');
-        const loadingBox = document.getElementById('loadingBox');
-        const errorBox = document.getElementById('errorBox');
-        const errorMessageText = document.getElementById('errorMessageText');
-        const activityMessageBox = document.getElementById('activityMessageBox');
-        const activityMessageText = document.getElementById('activityMessageText');
-        const taskMessageBox = document.getElementById('taskMessageBox');
-        const taskMessageText = taskMessageBox ? taskMessageBox.querySelector('span') : null;
-
-        const farmMapViewport = document.getElementById('farmMapViewport');
-        const farmMapImage = document.getElementById('farmMapImage');
-        const mapAssetOverlay = document.getElementById('mapAssetOverlay');
-        
-        const modalAssetName = document.getElementById('modalAssetName');
-        const modalStaticAssetId = document.getElementById('modalStaticAssetId');
-        const modalStaticAssetName = document.getElementById('modalStaticAssetName');
-        const modalStaticAssetType = document.getElementById('modalStaticAssetType');
-        const modalStaticAssetDescription = document.getElementById('modalStaticAssetDescription');
-        const modalStaticAssetLastActivityDate = document.getElementById('modalStaticAssetLastActivityDate');
-        const modalStaticAssetImageContainer = document.getElementById('modalStaticAssetImageContainer');
-        const modalStaticAssetLatestNotes = document.getElementById('modalStaticAssetLatestNotes');
-        const modalLatestActivityDisplay = document.getElementById('modalLatestActivityDisplay');
-        const modalNewActivityDateTimeInput = document.getElementById('modalNewActivityDateTime');
-        const modalNewActivityNoteInput = document.getElementById('modalNewActivityNote');
-        const modalNewActivityImageUrlInput = document.getElementById('modalNewActivityImageUrl');
-        const saveModalActivityButton = document.getElementById('saveModalActivityButton');
+        // DOM Elements (cached on load)
+        let messageBox, successMessageText, loadingBox, errorBox, errorMessageText,
+            activityMessageBox, activityMessageText, taskMessageBox, taskMessageText,
+            farmMapViewport, farmMapImage, mapAssetOverlay, modalAssetName, modalStaticAssetId,
+            modalStaticAssetName, modalStaticAssetType, modalStaticAssetDescription,
+            modalStaticAssetLastActivityDate, modalStaticAssetImageContainer,
+            modalStaticAssetLatestNotes, modalLatestActivityDisplay,
+            modalNewActivityDateTimeInput, modalNewActivityNoteInput,
+            modalNewActivityImageFileInput, modalNewActivityImagePreview, saveModalActivityButton,
+            fullAssetListContainer, assetListSearchInput, assetTypeFilterSelect,
+            taskListContainer, newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput,
+            newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput,
+            showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage;
 
 
-        const fullAssetListContainer = document.getElementById('fullAssetListContainer');
-        const assetListSearchInput = document.getElementById('assetListSearch');
-        const assetTypeFilterSelect = document.getElementById('assetTypeFilter');
+        function cacheDOMElements() {
+            messageBox = document.getElementById('messageBox');
+            successMessageText = document.getElementById('successMessageText');
+            loadingBox = document.getElementById('loadingBox');
+            errorBox = document.getElementById('errorBox');
+            errorMessageText = document.getElementById('errorMessageText');
+            activityMessageBox = document.getElementById('activityMessageBox');
+            activityMessageText = document.getElementById('activityMessageText');
+            taskMessageBox = document.getElementById('taskMessageBox');
+            taskMessageText = taskMessageBox ? taskMessageBox.querySelector('span') : null;
+
+            farmMapViewport = document.getElementById('farmMapViewport');
+            farmMapImage = document.getElementById('farmMapImage');
+            mapAssetOverlay = document.getElementById('mapAssetOverlay');
+            
+            modalAssetName = document.getElementById('modalAssetName');
+            modalStaticAssetId = document.getElementById('modalStaticAssetId');
+            modalStaticAssetName = document.getElementById('modalStaticAssetName');
+            modalStaticAssetType = document.getElementById('modalStaticAssetType');
+            modalStaticAssetDescription = document.getElementById('modalStaticAssetDescription');
+            modalStaticAssetLastActivityDate = document.getElementById('modalStaticAssetLastActivityDate');
+            modalStaticAssetImageContainer = document.getElementById('modalStaticAssetImageContainer');
+            modalStaticAssetLatestNotes = document.getElementById('modalStaticAssetLatestNotes');
+            modalLatestActivityDisplay = document.getElementById('modalLatestActivityDisplay');
+            modalNewActivityDateTimeInput = document.getElementById('modalNewActivityDateTime');
+            modalNewActivityNoteInput = document.getElementById('modalNewActivityNote');
+            modalNewActivityImageFileInput = document.getElementById('modalNewActivityImageFile');
+            modalNewActivityImagePreview = document.getElementById('modalNewActivityImagePreview');
+            saveModalActivityButton = document.getElementById('saveModalActivityButton');
 
 
-        const taskListContainer = document.getElementById('taskListContainer');
-        const newTaskNameInput = document.getElementById('newTaskName');
-        const newTaskDescriptionInput = document.getElementById('newTaskDescription');
-        const newTaskDueDateInput = document.getElementById('newTaskDueDate');
-        const newTaskAssetIdSelect = document.getElementById('newTaskAssetId'); // Changed to select
-        const newTaskMapZoneInput = document.getElementById('newTaskMapZone');
-        const newTaskPriorityInput = document.getElementById('newTaskPriority');
-        const showCompletedTasksToggle = document.getElementById('showCompletedTasksToggle');
-        const saveTaskButton = document.getElementById('saveTaskButton');
+            fullAssetListContainer = document.getElementById('fullAssetListContainer');
+            assetListSearchInput = document.getElementById('assetListSearch');
+            assetTypeFilterSelect = document.getElementById('assetTypeFilter');
 
-        const imageZoomModal = document.getElementById('imageZoomModal');
-        const zoomedImage = document.getElementById('zoomedImage');
+
+            taskListContainer = document.getElementById('taskListContainer');
+            newTaskNameInput = document.getElementById('newTaskName');
+            newTaskDescriptionInput = document.getElementById('newTaskDescription');
+            newTaskDueDateInput = document.getElementById('newTaskDueDate');
+            newTaskAssetIdSelect = document.getElementById('newTaskAssetId');
+            newTaskMapZoneInput = document.getElementById('newTaskMapZone');
+            newTaskPriorityInput = document.getElementById('newTaskPriority');
+            showCompletedTasksToggle = document.getElementById('showCompletedTasksToggle');
+            saveTaskButton = document.getElementById('saveTaskButton');
+
+            imageZoomModal = document.getElementById('imageZoomModal');
+            zoomedImage = document.getElementById('zoomedImage');
+        }
 
 
         let renderedImageWidth = 0;
@@ -670,7 +696,7 @@
                 calculateMapImageDimensionsAndRepopulate();
                 populateAssetList();
                 populateAssetTypeFilter();
-                populateTaskAssetIdDropdown(); // New
+                populateTaskAssetIdDropdown();
                 populateTasksDisplay();
                 
             } catch (error) {
@@ -867,7 +893,6 @@
             const searchTerm = assetListSearchInput ? assetListSearchInput.value.toLowerCase() : '';
             const selectedType = assetTypeFilterSelect ? assetTypeFilterSelect.value : '';
 
-
             const filteredAssetIds = Object.keys(farmData).filter(assetId => {
                 const asset = farmData[assetId];
                 const nameMatch = (asset.name && asset.name.toLowerCase().includes(searchTerm)) ||
@@ -881,7 +906,7 @@
                 return;
             }
 
-            filteredAssetIds.forEach(assetId => {
+            filteredAssetIds.sort((a, b) => (farmData[a].name || a).localeCompare(farmData[b].name || b)).forEach(assetId => {
                 const asset = farmData[assetId];
                 const listItem = document.createElement('div');
                 listItem.className = 'asset-list-item';
@@ -902,11 +927,10 @@
             });
         }
 
-        // --- NEW: Populate Task Asset ID Dropdown ---
+        // --- Populate Task Asset ID Dropdown ---
         function populateTaskAssetIdDropdown() {
             if (!newTaskAssetIdSelect || Object.keys(farmData).length === 0) return;
 
-            // Clear existing options except the first "None" option
             while (newTaskAssetIdSelect.options.length > 1) {
                 newTaskAssetIdSelect.remove(1);
             }
@@ -973,7 +997,13 @@
             
             modalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
             modalNewActivityNoteInput.value = '';
-            modalNewActivityImageUrlInput.value = '';
+            if (modalNewActivityImageFileInput) modalNewActivityImageFileInput.value = null;
+            if (modalNewActivityImagePreview) {
+                modalNewActivityImagePreview.src = "#";
+                modalNewActivityImagePreview.classList.add('hidden');
+            }
+            newActivitySelectedFile = null;
+
 
             assetInfoModal.classList.add('active');
         }
@@ -982,6 +1012,11 @@
             assetInfoModal.classList.remove('active');
             selectedAssetIdForModal = null;
             document.querySelectorAll('.map-asset').forEach(item => item.classList.remove('selected-on-map'));
+             if (modalNewActivityImagePreview) {
+                modalNewActivityImagePreview.src = "#";
+                modalNewActivityImagePreview.classList.add('hidden');
+            }
+            newActivitySelectedFile = null;
         }
 
         function displayModalActivityLog(assetIdToDisplay) {
@@ -992,9 +1027,15 @@
                     const entryDiv = document.createElement('div');
                     entryDiv.className = 'activity-log-entry';
                     const activityDateToDisplay = activity.userActivityTimestamp || activity.timestamp;
+                    let imgHTML = '';
+                    if (activity.activityImageUrl) {
+                        imgHTML = `<img src="${activity.activityImageUrl}" alt="Activity Image" class="activity-image mb-2" 
+                                        onerror="this.alt='Img load fail'; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                   <p class="text-red-500 text-sm hidden">Failed to load: ${activity.activityImageUrl}</p>`;
+                    }
                     entryDiv.innerHTML = `
                         <p class="text-xs text-gray-500 mb-1">Activity Date: ${formatDisplayDateTime(activityDateToDisplay)}</p>
-                        ${activity.activityImageUrl ? `<img src="${activity.activityImageUrl}" alt="Activity Image" class="activity-image mb-2" onerror="this.alt='Img load fail'; this.style.display='none'; this.nextElementSibling.style.display='block';"><p class="text-red-500 text-sm hidden">Failed to load: ${activity.activityImageUrl}</p>` : ''}
+                        ${imgHTML}
                         <p class="text-sm whitespace-pre-wrap">${activity.noteText || "No note for this activity."}</p>
                     `;
                     modalLatestActivityDisplay.appendChild(entryDiv);
@@ -1013,10 +1054,20 @@
             
             const userActivityTimestamp = modalNewActivityDateTimeInput.value ? new Date(modalNewActivityDateTimeInput.value).toISOString() : new Date().toISOString();
             const noteText = modalNewActivityNoteInput.value.trim();
-            const activityImageUrl = modalNewActivityImageUrlInput.value.trim();
+            
+            let imageData = null;
+            let imageFileName = null;
+            let imageMimeType = null;
 
-            if (!noteText && !activityImageUrl && !modalNewActivityDateTimeInput.value) {
-                showUserMessage(activityMessageBox, activityMessageText, "Please enter some activity data (date, note, or image URL).", null);
+            if (newActivitySelectedFile) {
+                imageData = newActivitySelectedFile.data;
+                imageFileName = newActivitySelectedFile.name;
+                imageMimeType = newActivitySelectedFile.type;
+            }
+
+
+            if (!noteText && !imageData && !modalNewActivityDateTimeInput.value) {
+                showUserMessage(activityMessageBox, activityMessageText, "Please enter some activity data (date, note, or image).", null);
                 saveModalActivityButton.disabled = false;
                 saveModalActivityButton.textContent = 'Save Activity to Sheet';
                 return;
@@ -1031,8 +1082,10 @@
                 userActivityTimestamp: userActivityTimestamp,
                 assetId: selectedAssetIdForModal,
                 noteText: noteText,
-                activityImageUrl: activityImageUrl,
-                activityId: activityId
+                activityId: activityId,
+                imageData: imageData,
+                imageFileName: imageFileName,
+                imageMimeType: imageMimeType
             };
             
             showUserMessage(activityMessageBox, activityMessageText, "Saving activity...", null, 10000);
@@ -1052,6 +1105,9 @@
                         const jsonResponse = JSON.parse(responseText);
                         if (jsonResponse.status === "success") {
                              showUserMessage(activityMessageBox, activityMessageText, `Activity saved successfully! (ID: ${jsonResponse.activityId || activityId})`, true);
+                             if (jsonResponse.activityImageUrl) {
+                                 activityData.activityImageUrl = jsonResponse.activityImageUrl;
+                             }
                         } else {
                             throw new Error(jsonResponse.message || "Apps Script reported an issue saving activity.");
                         }
@@ -1059,6 +1115,10 @@
                         console.warn("Activity save: Apps Script response not valid JSON, but HTTP status was OK. Assuming success.", responseText);
                         showUserMessage(activityMessageBox, activityMessageText, "Activity sent to sheet! (Check sheet for confirmation)", true);
                     }
+                    
+                    delete activityData.imageData;
+                    delete activityData.imageFileName;
+                    delete activityData.imageMimeType;
 
                     if (!assetActivities[selectedAssetIdForModal]) {
                         assetActivities[selectedAssetIdForModal] = [];
@@ -1092,7 +1152,12 @@
                 }
                 modalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
                 modalNewActivityNoteInput.value = '';
-                modalNewActivityImageUrlInput.value = '';
+                if (modalNewActivityImageFileInput) modalNewActivityImageFileInput.value = null;
+                if (modalNewActivityImagePreview) {
+                    modalNewActivityImagePreview.src = "#";
+                    modalNewActivityImagePreview.classList.add('hidden');
+                }
+                newActivitySelectedFile = null;
             }
         }
 
@@ -1245,7 +1310,7 @@
             const displayName = newTaskNameInput.value.trim();
             const description = newTaskDescriptionInput.value.trim();
             const dueDate = newTaskDueDateInput.value;
-            const assetId = newTaskAssetIdSelect.value; // Changed to read from select
+            const assetId = newTaskAssetIdSelect.value;
             const mapZone = newTaskMapZoneInput.value.trim();
             const priority = newTaskPriorityInput.value;
 
@@ -1307,7 +1372,7 @@
                     newTaskNameInput.value = '';
                     newTaskDescriptionInput.value = '';
                     newTaskDueDateInput.value = '';
-                    newTaskAssetIdSelect.value = ''; // Reset select
+                    newTaskAssetIdSelect.value = '';
                     newTaskMapZoneInput.value = '';
                     newTaskPriorityInput.value = 'Medium';
 
@@ -1352,15 +1417,43 @@
 
 
         window.onload = () => {
+            cacheDOMElements();
             document.getElementById('dashboardTabButton').click();
             loadInitialData();
             if(showCompletedTasksToggle) {
                 showCompletedTasksToggle.addEventListener('change', populateTasksDisplay);
             }
             if(assetListSearchInput && assetTypeFilterSelect) {
-                assetListSearchInput.addEventListener('input', () => populateAssetList()); // Pass no args to use current values
-                assetTypeFilterSelect.addEventListener('change', () => populateAssetList()); // Pass no args
+                assetListSearchInput.addEventListener('input', () => populateAssetList());
+                assetTypeFilterSelect.addEventListener('change', () => populateAssetList());
             }
+            if (modalNewActivityImageFileInput) {
+                modalNewActivityImageFileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            newActivitySelectedFile = {
+                                name: file.name,
+                                type: file.type,
+                                data: e.target.result
+                            };
+                            if(modalNewActivityImagePreview) {
+                                modalNewActivityImagePreview.src = e.target.result;
+                                modalNewActivityImagePreview.classList.remove('hidden');
+                            }
+                        }
+                        reader.readAsDataURL(file);
+                    } else {
+                        newActivitySelectedFile = null;
+                         if(modalNewActivityImagePreview) {
+                            modalNewActivityImagePreview.src = "#";
+                            modalNewActivityImagePreview.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+
             window.addEventListener('resize', calculateMapImageDimensionsAndRepopulate);
             if (farmMapImage) {
                 farmMapImage.onload = calculateMapImageDimensionsAndRepopulate;
@@ -1368,9 +1461,9 @@
                     calculateMapImageDimensionsAndRepopulate();
                 }
             }
+
         };
     </script>
 
 </body>
 </html>
-
