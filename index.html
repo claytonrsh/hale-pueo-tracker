@@ -6,6 +6,9 @@
     <title>Hale Pueo - homestead tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -44,7 +47,7 @@
             display: block;
         }
 
-        .form-input, .form-textarea, .form-date, .form-datetime, .form-select, .form-file { /* Added form-file */
+        .form-input, .form-textarea, .form-date, .form-datetime, .form-select, .form-file {
             border-color: #c7c7c7;
             transition: border-color 0.3s ease;
         }
@@ -90,8 +93,8 @@
 
         #farmMapViewport {
             width: 100%;
-            height: 70vh;
-            max-height: 700px;
+            height: 75vh;
+            max-height: 800px;
             border: 2px solid #acc6a0;
             border-radius: 8px;
             position: relative;
@@ -99,64 +102,23 @@
             margin-bottom: 1rem;
             background-color: #e6f0e1;
         }
-        #farmMapImage {
-            display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center center;
-        }
-        .map-asset-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-        .map-asset {
-            position: absolute;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-            pointer-events: auto;
-            transform: translate(-50%, -50%);
-        }
-        .map-asset:hover {
-            transform: translate(-50%, -50%) scale(1.25);
-            box-shadow: 0 0 12px rgba(0,0,0,0.5);
-            z-index: 15;
-        }
-        .map-asset.tree { background-color: rgba(76, 175, 80, 0.85); border: 1px solid rgba(46, 125, 50, 0.9); }
-        .map-asset.plant { background-color: rgba(139, 195, 74, 0.85); border: 1px solid rgba(104, 159, 56, 0.9); }
-        .map-asset.poultry { background-color: rgba(255, 193, 7, 0.85); border: 1px solid rgba(251, 140, 0, 0.9); }
-        .map-asset.structure { background-color: rgba(158, 158, 158, 0.85); border: 1px solid rgba(97, 97, 97, 0.9); }
-        .map-asset.other { background-color: rgba(33, 150, 243, 0.85); border: 1px solid rgba(25, 118, 210, 0.9); }
-        .map-asset.selected-on-map {
-            border: 3px solid #d32f2f;
-            transform: translate(-50%, -50%) scale(1.4);
-            z-index: 20;
-        }
-        .asset-image, .activity-image, #modalNewActivityImagePreview {
+       
+        .asset-image, .activity-image, .popup-image {
             max-width: 100%;
-            max-height: 200px;
             border-radius: 8px;
             margin-top: 0.5rem;
             margin-bottom: 0.5rem;
             border: 1px solid #ddd;
             object-fit: cover;
         }
-        #modalNewActivityImagePreview:empty, #modalNewActivityImagePreview[src="#"] { /* Hide preview if no src or placeholder */
+        .asset-image, .activity-image {
+             max-height: 200px;
+        }
+        .popup-image {
+            max-height: 150px;
+        }
+
+        #modalNewActivityImagePreview:empty, #modalNewActivityImagePreview[src="#"] {
             display: none;
         }
         .notes-textarea {
@@ -262,6 +224,40 @@
             margin: auto;
             border-radius: 4px;
         }
+        #taskLocationPickerMap {
+            height: 300px;
+            width: 100%;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius: 5px;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+        }
+        .leaflet-popup-content {
+            margin: 13px 19px !important;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        .leaflet-popup-content p {
+            margin: 0.5em 0 !important;
+        }
+         .leaflet-popup-content strong {
+            color: #333;
+        }
+        .leaflet-popup-content .popup-image {
+            margin-bottom: 0.5em;
+        }
+        .leaflet-popup-content .popup-notes {
+            max-height: 60px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            color: #555;
+            border-top: 1px solid #eee;
+            margin-top: 0.5em;
+            padding-top: 0.5em;
+        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -304,9 +300,6 @@
 
         <div id="dashboardTab" class="tab-content active">
             <div id="farmMapViewport">
-                <img id="farmMapImage" src="https://i.imgur.com/wY5KCBV.jpeg" alt="Farm Basemap">
-                <div id="mapAssetOverlay">
-                </div>
             </div>
             <p class="text-center text-sm text-gray-500 italic">Click on a map marker to view details and log activity.</p>
         </div>
@@ -396,8 +389,11 @@
                             </select>
                         </div>
                          <div>
-                            <label for="newTaskMapZone" class="block text-sm font-medium text-gray-700">Map Zone (Optional):</label>
-                            <input type="text" id="newTaskMapZone" class="form-input mt-1 block w-full rounded-md p-2" placeholder="e.g., Orchard, Coop Area">
+                            <label class="block text-sm font-medium text-gray-700">Task Location (Optional):</label>
+                            <input type="hidden" id="newTaskLat">
+                            <input type="hidden" id="newTaskLon">
+                            <button type="button" onclick="openTaskLocationPickerModal()" class="text-sm text-blue-600 hover:underline mt-1">Set Task Location on Map</button>
+                            <span id="taskLocationCoordsDisplay" class="text-xs text-gray-500 ml-2 block mt-1">No location set</span>
                         </div>
                         <div>
                             <label for="newTaskPriority" class="block text-sm font-medium text-gray-700">Priority:</label>
@@ -472,8 +468,21 @@
             <img id="zoomedImage" src="" alt="Zoomed Image" class="max-w-full max-h-full">
         </div>
     </div>
+    
+    <div id="taskLocationModal" class="modal-overlay">
+        <div class="modal-content">
+            <button onclick="closeTaskLocationPickerModal()" class="modal-close-button">&times;</button>
+            <h3 class="text-xl font-semibold text-gray-700 mb-3">Pick Task Location</h3>
+            <div id="taskLocationPickerMap"></div>
+            <p class="text-xs text-gray-500 mt-2">Click on the map to select a location for the task.</p>
+            <button onclick="confirmTaskLocation()" class="action-button mt-3 bg-green-600 hover:bg-green-700">Confirm Location</button>
+        </div>
+    </div>
 
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
     <script>
         // --- Configuration ---
         const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXl17fkaqYmdxU7pJ00Z4WWkglWndAJFhyKDz-axqR2u4zeUQOfgFR94eqp5ZipCwGZ3Ycm1eBu7Tl/pub?gid=0&single=true&output=csv';
@@ -485,11 +494,15 @@
         let taskListData = [];
         let selectedAssetIdForModal = null;
         let newActivitySelectedFile = null;
-        
-        // DOM Elements (cached on load)
+        let dashboardMap = null;
+        let taskLocationPickerMap = null;
+        let temporaryTaskMarker = null;
+
+        // --- DOM Elements (will be cached in window.onload) ---
         let messageBox, successMessageText, loadingBox, errorBox, errorMessageText,
             activityMessageBox, activityMessageText, taskMessageBox, taskMessageText,
-            farmMapViewport, farmMapImage, mapAssetOverlay, modalAssetName, modalStaticAssetId,
+            farmMapViewport,
+            modalAssetName, modalStaticAssetId,
             modalStaticAssetName, modalStaticAssetType, modalStaticAssetDescription,
             modalStaticAssetLastActivityDate, modalStaticAssetImageContainer,
             modalStaticAssetLatestNotes, modalLatestActivityDisplay,
@@ -498,9 +511,11 @@
             fullAssetListContainer, assetListSearchInput, assetTypeFilterSelect,
             taskListContainer, newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput,
             newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput,
-            showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage;
+            showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage,
+            assetInfoModal, taskLocationModal, taskLocationPickerMapElement,
+            newTaskLatInput, newTaskLonInput, taskLocationCoordsDisplay;
 
-
+        // --- FUNCTION DEFINITIONS ---
         function cacheDOMElements() {
             messageBox = document.getElementById('messageBox');
             successMessageText = document.getElementById('successMessageText');
@@ -513,8 +528,6 @@
             taskMessageText = taskMessageBox ? taskMessageBox.querySelector('span') : null;
 
             farmMapViewport = document.getElementById('farmMapViewport');
-            farmMapImage = document.getElementById('farmMapImage');
-            mapAssetOverlay = document.getElementById('mapAssetOverlay');
             
             modalAssetName = document.getElementById('modalAssetName');
             modalStaticAssetId = document.getElementById('modalStaticAssetId');
@@ -531,11 +544,9 @@
             modalNewActivityImagePreview = document.getElementById('modalNewActivityImagePreview');
             saveModalActivityButton = document.getElementById('saveModalActivityButton');
 
-
             fullAssetListContainer = document.getElementById('fullAssetListContainer');
             assetListSearchInput = document.getElementById('assetListSearch');
             assetTypeFilterSelect = document.getElementById('assetTypeFilter');
-
 
             taskListContainer = document.getElementById('taskListContainer');
             newTaskNameInput = document.getElementById('newTaskName');
@@ -549,27 +560,23 @@
 
             imageZoomModal = document.getElementById('imageZoomModal');
             zoomedImage = document.getElementById('zoomedImage');
+            assetInfoModal = document.getElementById('assetInfoModal');
+            taskLocationModal = document.getElementById('taskLocationModal');
+            taskLocationPickerMapElement = document.getElementById('taskLocationPickerMap');
+            newTaskLatInput = document.getElementById('newTaskLat');
+            newTaskLonInput = document.getElementById('newTaskLon');
+            taskLocationCoordsDisplay = document.getElementById('taskLocationCoordsDisplay');
         }
 
-
-        let renderedImageWidth = 0;
-        let renderedImageHeight = 0;
-        let imageOffsetX = 0;
-        let imageOffsetY = 0;
-
-
-        // --- Helper Functions (Moved Up) ---
         function formatDateTimeForInput(isoString) {
             if (!isoString) return '';
             try {
                 const date = new Date(isoString);
-                const year = date.getFullYear();
-                const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                const day = date.getDate().toString().padStart(2, '0');
-                const hours = date.getHours().toString().padStart(2, '0');
-                const minutes = date.getMinutes().toString().padStart(2, '0');
-                return `${year}-${month}-${day}T${hours}:${minutes}`;
+                const timezoneOffset = date.getTimezoneOffset() * 60000;
+                const localISOTime = new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
+                return localISOTime;
             } catch (e) {
+                console.warn("Error formatting date for input:", isoString, e);
                 return '';
             }
         }
@@ -583,29 +590,6 @@
             }
         }
 
-        // --- Tab Switching Function ---
-        function openTab(event, tabName) {
-            let i, tabcontent, tabbuttons;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].style.display = "none";
-                tabcontent[i].classList.remove("active");
-            }
-            tabbuttons = document.getElementsByClassName("tab-button");
-            for (i = 0; i < tabbuttons.length; i++) {
-                tabbuttons[i].classList.remove("active");
-            }
-            document.getElementById(tabName).style.display = "block";
-            document.getElementById(tabName).classList.add("active");
-            event.currentTarget.classList.add("active");
-
-            if (tabName === 'dashboardTab') {
-                setTimeout(calculateMapImageDimensionsAndRepopulate, 0);
-            }
-        }
-
-
-        // --- Other Helper Functions ---
         function showLoading(isLoading, message = "Loading Data...") {
             const loaderDiv = loadingBox.querySelector('.flex');
             if (loaderDiv) {
@@ -617,7 +601,10 @@
         }
 
         function showUserMessage(element, textElement, message, isSuccess = true, duration = 5000) {
-            if (!element || !textElement) return;
+            if (!element || !textElement) {
+                console.error("showUserMessage: Target element or textElement is null", element, textElement);
+                return;
+            }
             element.classList.remove('hidden', 'bg-green-100', 'border-green-400', 'text-green-700', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-blue-100', 'border-blue-400', 'text-blue-700');
             if (isSuccess === true) {
                  element.classList.add('bg-green-100', 'border-green-400', 'text-green-700');
@@ -631,9 +618,48 @@
             textElement.textContent = message;
             setTimeout(() => { element.classList.add('hidden'); }, duration);
         }
+        
+        function getErrorMessage(error) {
+            let errorDetail = "See console for details.";
+            if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
+                errorDetail = error.message;
+            } else if (error && typeof error.toString === 'function') {
+                const errStr = error.toString();
+                if (errStr.trim() !== '' && errStr !== "[object Object]") {
+                    errorDetail = errStr;
+                }
+            }
+            return errorDetail;
+        }
 
+        function openTab(event, tabName) {
+            let i, tabcontent, tabbuttons;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
+            }
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].classList.remove("active");
+            }
+            const currentTab = document.getElementById(tabName);
+            if (currentTab) {
+                currentTab.style.display = "block";
+                currentTab.classList.add("active");
+            }
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add("active");
+            }
 
-        // --- CSV Parsing Function ---
+            if (tabName === 'dashboardTab' && dashboardMap) {
+                 setTimeout(() => dashboardMap.invalidateSize(), 0);
+            }
+            if (tabName === 'tasksTab' && taskLocationPickerMap && taskLocationModal.classList.contains('active')) {
+                setTimeout(() => taskLocationPickerMap.invalidateSize(), 0);
+            }
+        }
+
         function csvToJSON(csvText) {
             const trimmedCsvText = csvText.trim();
             if (!trimmedCsvText) { return {}; }
@@ -670,7 +696,6 @@
             return jsonData;
         }
         
-        // --- Data Loading ---
         async function loadInitialData() {
             showLoading(true, "Loading initial asset data...");
             try {
@@ -684,16 +709,16 @@
                 const farmCsvText = await farmResponse.text();
                 farmData = csvToJSON(farmCsvText);
                 if (Object.keys(farmData).length === 0 && farmCsvText.trim() !== '') {
-                   throw new Error("No asset data parsed. Check Asset Sheet CSV format/headers (assetId, name, type, description, etc).");
+                   throw new Error("No asset data parsed. Check Asset Sheet CSV format/headers (assetId, name, type, description, lat, lon, etc).");
                 } else if (Object.keys(farmData).length === 0 && farmCsvText.trim() === '') {
                     throw new Error("Asset Sheet CSV data empty.");
                 }
                 showUserMessage(messageBox, successMessageText, "Asset list loaded.", true, 3000);
 
+                initializeDashboardMap();
                 await loadActivitiesFromSheet();
                 await loadTasksFromSheet();
-
-                calculateMapImageDimensionsAndRepopulate();
+                
                 populateAssetList();
                 populateAssetTypeFilter();
                 populateTaskAssetIdDropdown();
@@ -701,16 +726,7 @@
                 
             } catch (error) {
                 console.error("Load initial data error:", error);
-                let errorDetail = "See console for details.";
-                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
-                    errorDetail = error.message;
-                } else if (error && typeof error.toString === 'function') {
-                    const errStr = error.toString();
-                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
-                        errorDetail = errStr;
-                    }
-                }
-                showUserMessage(errorBox, errorMessageText, `Failed to load initial data: ${errorDetail}`, false);
+                showUserMessage(errorBox, errorMessageText, `Failed to load initial data: ${getErrorMessage(error)}`, false);
             } finally {
                 showLoading(false);
             }
@@ -746,16 +762,7 @@
                 }
             } catch (error) {
                 console.error("Load activities error:", error);
-                let errorDetail = "See console for details.";
-                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
-                    errorDetail = error.message;
-                } else if (error && typeof error.toString === 'function') {
-                    const errStr = error.toString();
-                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
-                        errorDetail = errStr;
-                    }
-                }
-                showUserMessage(errorBox, errorMessageText, `Failed to load activities: ${errorDetail}`, false);
+                showUserMessage(errorBox, errorMessageText, `Failed to load activities: ${getErrorMessage(error)}`, false);
             }
         }
 
@@ -779,91 +786,98 @@
                 }
             } catch (error) {
                 console.error("Load tasks error:", error);
-                let errorDetail = "See console for details.";
-                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
-                    errorDetail = error.message;
-                } else if (error && typeof error.toString === 'function') {
-                    const errStr = error.toString();
-                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
-                        errorDetail = errStr;
-                    }
-                }
-                showUserMessage(errorBox, errorMessageText, `Failed to load tasks: ${errorDetail}`, false);
+                showUserMessage(errorBox, errorMessageText, `Failed to load tasks: ${getErrorMessage(error)}`, false);
                 if(taskListContainer) taskListContainer.innerHTML = `<p class="text-red-500">Error loading tasks.</p>`;
             }
         }
 
-
-        // --- Map and Asset Marker Logic ---
-        function calculateMapImageDimensionsAndRepopulate() {
-            if (!farmMapImage || !farmMapViewport) return;
-            if (farmMapImage.complete && farmMapImage.naturalWidth > 0) {
-                const viewportWidth = farmMapViewport.clientWidth;
-                const viewportHeight = farmMapViewport.clientHeight;
-                const imageNaturalWidth = farmMapImage.naturalWidth;
-                const imageNaturalHeight = farmMapImage.naturalHeight;
-
-                const imageAspectRatio = imageNaturalWidth / imageNaturalHeight;
-                const viewportAspectRatio = viewportWidth / viewportHeight;
-
-                if (imageAspectRatio > viewportAspectRatio) {
-                    renderedImageWidth = viewportWidth;
-                    renderedImageHeight = viewportWidth / imageAspectRatio;
-                } else {
-                    renderedImageHeight = viewportHeight;
-                    renderedImageWidth = viewportHeight * imageAspectRatio;
-                }
-                imageOffsetX = (viewportWidth - renderedImageWidth) / 2;
-                imageOffsetY = (viewportHeight - renderedImageHeight) / 2;
-                populateFarmMap();
-            } else {
-                setTimeout(calculateMapImageDimensionsAndRepopulate, 200);
-            }
-        }
-
-
-        function populateFarmMap() {
-            if (!mapAssetOverlay || renderedImageWidth === 0 || renderedImageHeight === 0) {
+        function initializeDashboardMap() {
+            if (dashboardMap) {
+                try { dashboardMap.invalidateSize(); } catch(e) { console.warn("Could not invalidate map size on re-init attempt", e); }
                 return;
             }
-            mapAssetOverlay.innerHTML = '';
             
-            Object.keys(farmData).forEach(assetId => {
-                const asset = farmData[assetId];
-                const mapXPercent = parseFloat(asset.mapX);
-                const mapYPercent = parseFloat(asset.mapY);
+            const mapElement = document.getElementById('farmMapViewport');
+            if (!mapElement) {
+                console.error("Critical: farmMapViewport element not found for Leaflet initialization!");
+                showUserMessage(errorBox, errorMessageText, "Map container not found. Dashboard cannot load.", false);
+                return;
+            }
+            
+            const defaultLat = 20.74065901504538;
+            const defaultLon = -155.9872504358726;
 
-                if (!isNaN(mapXPercent) && !isNaN(mapYPercent)) {
-                    const markerLeft = imageOffsetX + (mapXPercent / 100) * renderedImageWidth;
-                    const markerTop = imageOffsetY + (mapYPercent / 100) * renderedImageHeight;
+            try {
+                dashboardMap = L.map('farmMapViewport', {
+                    maxZoom: 24
+                }).setView([defaultLat, defaultLon], 19);
 
-                    const mapItem = document.createElement('div');
-                    mapItem.className = 'map-asset';
-                    mapItem.id = `map-item-${assetId}`;
-                    mapItem.style.left = `${markerLeft}px`;
-                    mapItem.style.top = `${markerTop}px`;
-                    mapItem.title = asset.name || assetId;
-                    
-                    let label = assetId.substring(0,1).toUpperCase();
-                    let itemClass = 'other';
-                    if (asset.type) {
-                        const assetTypeLower = asset.type.toLowerCase();
-                        if (assetTypeLower.includes('tree')) { itemClass = 'tree'; }
-                        else if (assetTypeLower.includes('plant') || assetTypeLower.includes('vegetable')) { itemClass = 'plant'; }
-                        else if (assetTypeLower.includes('poultry')) { itemClass = 'poultry'; }
-                        else if (assetTypeLower.includes('structure')) { itemClass = 'structure';}
-                        label = assetTypeLower.substring(0,1).toUpperCase();
-                    }
-                    mapItem.textContent = label;
-                    mapItem.classList.add(itemClass);
-                    
-                    mapItem.onclick = () => openAssetModal(assetId);
-                    mapAssetOverlay.appendChild(mapItem);
-                }
-            });
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                   attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA FSA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                   maxZoom: 24
+                }).addTo(dashboardMap);
+                
+                populateLeafletMapMarkers();
+            } catch (mapError) {
+                console.error("Error initializing Leaflet map:", mapError);
+                showUserMessage(errorBox, errorMessageText, `Error initializing map: ${getErrorMessage(mapError)}`, false);
+            }
         }
         
-        // --- Asset List Tab Functions ---
+        function populateLeafletMapMarkers() {
+            if (!dashboardMap) {
+                console.warn("populateLeafletMapMarkers called but dashboardMap is not initialized.");
+                return;
+            }
+            if (Object.keys(farmData).length === 0) {
+                return;
+            }
+            
+            dashboardMap.eachLayer(function (layer) {
+                if (layer instanceof L.Marker) {
+                    dashboardMap.removeLayer(layer);
+                }
+            });
+
+            let markersAddedCount = 0;
+            Object.keys(farmData).forEach(assetId => {
+                const asset = farmData[assetId];
+                const lat = parseFloat(asset.lat);
+                const lon = parseFloat(asset.lon);
+
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    const marker = L.marker([lat, lon]).addTo(dashboardMap);
+                    
+                    let popupContent = `<b>${asset.name || assetId}</b><br>${asset.type || 'N/A'}`;
+                    let imageUrlToDisplay = asset.imageUrl || '';
+                    let notesToDisplay = asset.description || 'No description.';
+
+                    if (assetActivities[assetId] && assetActivities[assetId].length > 0) {
+                        const latestActivity = assetActivities[assetId][assetActivities[assetId].length - 1];
+                        if (latestActivity.activityImageUrl) {
+                            imageUrlToDisplay = latestActivity.activityImageUrl;
+                        }
+                        if (latestActivity.noteText) {
+                            notesToDisplay = latestActivity.noteText;
+                        }
+                    }
+
+                    if (imageUrlToDisplay) {
+                        popupContent += `<br><img src="${imageUrlToDisplay}" alt="Latest image for ${asset.name || assetId}" class="popup-image">`;
+                    }
+                    popupContent += `<div class="popup-notes">${notesToDisplay.length > 100 ? notesToDisplay.substring(0, 100) + '...' : notesToDisplay}</div>`;
+                    popupContent += `<button class="text-blue-500 hover:underline text-xs p-1 mt-1 w-full text-center" onclick="openAssetModal('${assetId}')">View Full Details & Log</button>`;
+
+                    marker.bindPopup(popupContent, {maxWidth: 250});
+                    markersAddedCount++;
+                }
+            });
+            if (markersAddedCount === 0 && Object.keys(farmData).length > 0) {
+                console.warn("No valid lat/lon data found in farmData to create markers.");
+            }
+        }
+
+
         function populateAssetTypeFilter() {
             if (!assetTypeFilterSelect || Object.keys(farmData).length === 0) return;
             
@@ -913,8 +927,8 @@
                 listItem.onclick = () => openAssetModal(assetId);
 
                 let missingLocationFlag = '';
-                if (asset.mapX === undefined || asset.mapY === undefined || String(asset.mapX).trim() === '' || String(asset.mapY).trim() === '') {
-                    missingLocationFlag = `<span class="missing-location-flag">(No Location Data)</span>`;
+                if (asset.lat === undefined || asset.lon === undefined || String(asset.lat).trim() === '' || String(asset.lon).trim() === '') {
+                    missingLocationFlag = `<span class="missing-location-flag">(No Lat/Lon Data)</span>`;
                 }
                 
                 listItem.innerHTML = `
@@ -927,7 +941,6 @@
             });
         }
 
-        // --- Populate Task Asset ID Dropdown ---
         function populateTaskAssetIdDropdown() {
             if (!newTaskAssetIdSelect || Object.keys(farmData).length === 0) return;
 
@@ -944,8 +957,53 @@
             });
         }
 
+        function openTaskLocationPickerModal() {
+            if (!taskLocationModal) return;
+            taskLocationModal.classList.add('active');
 
-        // --- Modal Functions ---
+            if (!taskLocationPickerMap) {
+                const defaultCenter = dashboardMap ? dashboardMap.getCenter() : [20.74065901504538, -155.9872504358726];
+                const defaultZoom = dashboardMap ? dashboardMap.getZoom() : 17;
+
+                taskLocationPickerMap = L.map('taskLocationPickerMap').setView(defaultCenter, defaultZoom);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(taskLocationPickerMap);
+            } else {
+                 taskLocationPickerMap.invalidateSize();
+            }
+            
+            if (temporaryTaskMarker) {
+                taskLocationPickerMap.removeLayer(temporaryTaskMarker);
+                temporaryTaskMarker = null;
+            }
+            if (newTaskLatInput.value && newTaskLonInput.value) {
+                 temporaryTaskMarker = L.marker([parseFloat(newTaskLatInput.value), parseFloat(newTaskLonInput.value)]).addTo(taskLocationPickerMap);
+                 taskLocationPickerMap.panTo([parseFloat(newTaskLatInput.value), parseFloat(newTaskLonInput.value)]);
+            }
+
+            taskLocationPickerMap.on('click', function(e) {
+                if (temporaryTaskMarker) {
+                    taskLocationPickerMap.removeLayer(temporaryTaskMarker);
+                }
+                temporaryTaskMarker = L.marker(e.latlng).addTo(taskLocationPickerMap);
+                newTaskLatInput.value = e.latlng.lat.toFixed(6);
+                newTaskLonInput.value = e.latlng.lng.toFixed(6);
+                if (taskLocationCoordsDisplay) taskLocationCoordsDisplay.textContent = `Lat: ${e.latlng.lat.toFixed(4)}, Lon: ${e.latlng.lng.toFixed(4)}`;
+            });
+        }
+
+        function closeTaskLocationPickerModal() {
+            if (taskLocationPickerMap) {
+                taskLocationPickerMap.off('click');
+            }
+            if (taskLocationModal) taskLocationModal.classList.remove('active');
+        }
+
+        function confirmTaskLocation() {
+            closeTaskLocationPickerModal();
+        }
+
         function openAssetModal(assetId) {
             selectedAssetIdForModal = assetId;
             const asset = farmData[assetId];
@@ -1003,7 +1061,6 @@
                 modalNewActivityImagePreview.classList.add('hidden');
             }
             newActivitySelectedFile = null;
-
 
             assetInfoModal.classList.add('active');
         }
@@ -1064,7 +1121,6 @@
                 imageFileName = newActivitySelectedFile.name;
                 imageMimeType = newActivitySelectedFile.type;
             }
-
 
             if (!noteText && !imageData && !modalNewActivityDateTimeInput.value) {
                 showUserMessage(activityMessageBox, activityMessageText, "Please enter some activity data (date, note, or image).", null);
@@ -1135,16 +1191,7 @@
                 }
             } catch (error) {
                 console.error("Full error object during saveModalActivity:", error);
-                let errorDetail = "See console for details.";
-                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
-                    errorDetail = error.message;
-                } else if (error && typeof error.toString === 'function') {
-                    const errStr = error.toString();
-                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
-                        errorDetail = errStr;
-                    }
-                }
-                showUserMessage(activityMessageBox, activityMessageText, `Error saving activity: ${errorDetail}`, false);
+                showUserMessage(activityMessageBox, activityMessageText, `Error saving activity: ${getErrorMessage(error)}`, false);
             } finally {
                 if (saveModalActivityButton) {
                     saveModalActivityButton.disabled = false;
@@ -1161,8 +1208,6 @@
             }
         }
 
-
-        // --- Task Management Functions ---
         function populateTasksDisplay() {
             if (!taskListContainer) return;
             taskListContainer.innerHTML = '';
@@ -1281,16 +1326,7 @@
                 }
             } catch (error) {
                 console.error("Full error object during handleTaskCompletionChange:", error);
-                let errorDetail = "See console for details.";
-                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
-                    errorDetail = error.message;
-                } else if (error && typeof error.toString === 'function') {
-                    const errStr = error.toString();
-                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
-                        errorDetail = errStr;
-                    }
-                }
-                showUserMessage(taskMessageBox, taskMessageText, `Error updating task status: ${errorDetail}`, false);
+                showUserMessage(taskMessageBox, taskMessageText, `Error updating task status: ${getErrorMessage(error)}`, false);
                 const checkbox = document.getElementById(`task-complete-${taskId}`);
                 if(checkbox) checkbox.checked = !isChecked;
             }
@@ -1313,6 +1349,9 @@
             const assetId = newTaskAssetIdSelect.value;
             const mapZone = newTaskMapZoneInput.value.trim();
             const priority = newTaskPriorityInput.value;
+            const taskLat = newTaskLatInput.value.trim();
+            const taskLon = newTaskLonInput.value.trim();
+
 
             if (!displayName) {
                 showUserMessage(taskMessageBox, taskMessageText, "Please enter a task name.", null);
@@ -1334,7 +1373,9 @@
                 createdDate: createdDate,
                 mapZone: mapZone,
                 assetId: assetId,
-                priority: priority
+                priority: priority,
+                taskLat: taskLat,
+                taskLon: taskLon
             };
 
             showUserMessage(taskMessageBox, taskMessageText, "Saving new task...", null, 10000);
@@ -1375,6 +1416,10 @@
                     newTaskAssetIdSelect.value = '';
                     newTaskMapZoneInput.value = '';
                     newTaskPriorityInput.value = 'Medium';
+                    newTaskLatInput.value = '';
+                    newTaskLonInput.value = '';
+                    if (taskLocationCoordsDisplay) taskLocationCoordsDisplay.textContent = 'No location set';
+
 
                 } else {
                     const errorText = await response.text();
@@ -1383,16 +1428,7 @@
                 }
             } catch (error) {
                 console.error("Full error object during saveNewTask:", error);
-                let errorDetail = "See console for details.";
-                if (error && error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
-                    errorDetail = error.message;
-                } else if (error && typeof error.toString === 'function') {
-                    const errStr = error.toString();
-                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
-                        errorDetail = errStr;
-                    }
-                }
-                showUserMessage(taskMessageBox, taskMessageText, `Error saving task: ${errorDetail}`, false);
+                showUserMessage(taskMessageBox, taskMessageText, `Error saving task: ${getErrorMessage(error)}`, false);
             } finally {
                  if (saveTaskButton) {
                     saveTaskButton.disabled = false;
@@ -1401,7 +1437,6 @@
             }
         }
 
-        // --- Image Zoom Modal Functions ---
         function openImageZoomModal(imageUrl) {
             if (zoomedImage && imageZoomModal) {
                 zoomedImage.src = imageUrl;
@@ -1420,6 +1455,7 @@
             cacheDOMElements();
             document.getElementById('dashboardTabButton').click();
             loadInitialData();
+            
             if(showCompletedTasksToggle) {
                 showCompletedTasksToggle.addEventListener('change', populateTasksDisplay);
             }
@@ -1453,15 +1489,6 @@
                     }
                 });
             }
-
-            window.addEventListener('resize', calculateMapImageDimensionsAndRepopulate);
-            if (farmMapImage) {
-                farmMapImage.onload = calculateMapImageDimensionsAndRepopulate;
-                if (farmMapImage.complete) {
-                    calculateMapImageDimensionsAndRepopulate();
-                }
-            }
-
         };
     </script>
 
