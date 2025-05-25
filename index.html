@@ -93,8 +93,8 @@
 
         #farmMapViewport {
             width: 100%;
-            height: 75vh;
-            max-height: 800px;
+            height: 70vh;
+            max-height: 700px;
             border: 2px solid #acc6a0;
             border-radius: 8px;
             position: relative;
@@ -102,22 +102,63 @@
             margin-bottom: 1rem;
             background-color: #e6f0e1;
         }
-       
-        .asset-image, .activity-image, .popup-image {
+        #farmMapImage {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center center;
+        }
+        .map-asset-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .map-asset {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            pointer-events: auto;
+            transform: translate(-50%, -50%);
+        }
+        .map-asset:hover {
+            transform: translate(-50%, -50%) scale(1.25);
+            box-shadow: 0 0 12px rgba(0,0,0,0.5);
+            z-index: 15;
+        }
+        .map-asset.tree { background-color: rgba(76, 175, 80, 0.85); border: 1px solid rgba(46, 125, 50, 0.9); }
+        .map-asset.plant { background-color: rgba(139, 195, 74, 0.85); border: 1px solid rgba(104, 159, 56, 0.9); }
+        .map-asset.poultry { background-color: rgba(255, 193, 7, 0.85); border: 1px solid rgba(251, 140, 0, 0.9); }
+        .map-asset.structure { background-color: rgba(158, 158, 158, 0.85); border: 1px solid rgba(97, 97, 97, 0.9); }
+        .map-asset.other { background-color: rgba(33, 150, 243, 0.85); border: 1px solid rgba(25, 118, 210, 0.9); }
+        .map-asset.selected-on-map {
+            border: 3px solid #d32f2f;
+            transform: translate(-50%, -50%) scale(1.4);
+            z-index: 20;
+        }
+        .asset-image, .activity-image {
             max-width: 100%;
+            max-height: 200px;
             border-radius: 8px;
             margin-top: 0.5rem;
             margin-bottom: 0.5rem;
             border: 1px solid #ddd;
             object-fit: cover;
         }
-        .asset-image, .activity-image {
-             max-height: 200px;
-        }
-        .popup-image {
-            max-height: 150px;
-        }
-
         #modalNewActivityImagePreview:empty, #modalNewActivityImagePreview[src="#"] {
             display: none;
         }
@@ -389,6 +430,10 @@
                             </select>
                         </div>
                          <div>
+                            <label for="newTaskMapZone" class="block text-sm font-medium text-gray-700">Map Zone (Optional):</label>
+                            <input type="text" id="newTaskMapZone" class="form-input mt-1 block w-full rounded-md p-2" placeholder="e.g., Orchard, Coop Area">
+                        </div>
+                         <div>
                             <label class="block text-sm font-medium text-gray-700">Task Location (Optional):</label>
                             <input type="hidden" id="newTaskLat">
                             <input type="hidden" id="newTaskLon">
@@ -419,14 +464,16 @@
             
             <div id="modalStaticAssetInfo" class="mb-4 p-4 border border-gray-200 rounded-md bg-white">
                 <h4 class="font-semibold text-lg mb-2">Asset Information</h4>
-                <p><strong>ID:</strong> <span id="modalStaticAssetId"></span></p>
-                <p><strong>Name:</strong> <span id="modalStaticAssetName"></span></p>
-                <p><strong>Type:</strong> <span id="modalStaticAssetType"></span></p>
-                <p><strong>Description:</strong> <span id="modalStaticAssetDescription" class="text-sm text-gray-600 whitespace-pre-wrap"></span></p>
+                <p><strong>ID:</strong> <span id="modalStaticAssetId">N/A</span></p>
+                <p><strong>Name:</strong> <span id="modalStaticAssetName">N/A</span></p>
+                <p><strong>Type:</strong> <span id="modalStaticAssetType">N/A</span></p>
+                <p><strong>Description:</strong> <span id="modalStaticAssetDescription" class="text-sm text-gray-600 whitespace-pre-wrap">N/A</span></p>
                 <hr class="my-3">
-                <p><strong>Last Activity Date:</strong> <span id="modalStaticAssetLastActivityDate"></span></p>
-                <div id="modalStaticAssetImageContainer" class="mt-2"></div>
-                <p class="mt-2"><strong>Latest Activity Notes:</strong> <span id="modalStaticAssetLatestNotes" class="text-sm text-gray-600 whitespace-pre-wrap"></span></p>
+                <p><strong>Last Activity Date:</strong> <span id="modalStaticAssetLastActivityDate">N/A</span></p>
+                <div id="modalStaticAssetImageContainer" class="mt-2">
+                    <p class="text-xs text-gray-400 italic">No image available.</p>
+                </div>
+                <p class="mt-2"><strong>Latest Activity Notes:</strong> <span id="modalStaticAssetLatestNotes" class="text-sm text-gray-600 whitespace-pre-wrap">N/A</span></p>
             </div>
 
             <hr class="my-6">
@@ -517,55 +564,101 @@
 
         // --- FUNCTION DEFINITIONS ---
         function cacheDOMElements() {
+            console.log("Attempting to cache DOM elements...");
             messageBox = document.getElementById('messageBox');
+                if (!messageBox) console.error("CRITICAL CACHE ERROR: messageBox not found");
             successMessageText = document.getElementById('successMessageText');
+                if (!successMessageText) console.error("CRITICAL CACHE ERROR: successMessageText not found");
             loadingBox = document.getElementById('loadingBox');
+                if (!loadingBox) console.error("CRITICAL CACHE ERROR: loadingBox not found");
             errorBox = document.getElementById('errorBox');
+                if (!errorBox) console.error("CRITICAL CACHE ERROR: errorBox not found");
             errorMessageText = document.getElementById('errorMessageText');
+                if (!errorMessageText) console.error("CRITICAL CACHE ERROR: errorMessageText not found");
             activityMessageBox = document.getElementById('activityMessageBox');
+                if (!activityMessageBox) console.error("CRITICAL CACHE ERROR: activityMessageBox not found");
             activityMessageText = document.getElementById('activityMessageText');
+                 if (!activityMessageText) console.error("CRITICAL CACHE ERROR: activityMessageText not found");
             taskMessageBox = document.getElementById('taskMessageBox');
             taskMessageText = taskMessageBox ? taskMessageBox.querySelector('span') : null;
+                 if (!taskMessageText && taskMessageBox) console.warn("CACHE WARNING: taskMessageText (span inside taskMessageBox) not found"); // Changed to warn as it's for user messages
+
 
             farmMapViewport = document.getElementById('farmMapViewport');
+                if (!farmMapViewport) console.error("CRITICAL CACHE ERROR: farmMapViewport not found");
             
             modalAssetName = document.getElementById('modalAssetName');
+                if (!modalAssetName) console.error("CRITICAL CACHE ERROR: modalAssetName not found");
             modalStaticAssetId = document.getElementById('modalStaticAssetId');
+                if (!modalStaticAssetId) console.error("CRITICAL CACHE ERROR: modalStaticAssetId not found");
             modalStaticAssetName = document.getElementById('modalStaticAssetName');
+                if (!modalStaticAssetName) console.error("CRITICAL CACHE ERROR: modalStaticAssetName not found");
             modalStaticAssetType = document.getElementById('modalStaticAssetType');
+                if (!modalStaticAssetType) console.error("CRITICAL CACHE ERROR: modalStaticAssetType not found");
             modalStaticAssetDescription = document.getElementById('modalStaticAssetDescription');
+                if (!modalStaticAssetDescription) console.error("CRITICAL CACHE ERROR: modalStaticAssetDescription not found");
             modalStaticAssetLastActivityDate = document.getElementById('modalStaticAssetLastActivityDate');
+                if (!modalStaticAssetLastActivityDate) console.error("CRITICAL CACHE ERROR: modalStaticAssetLastActivityDate not found");
             modalStaticAssetImageContainer = document.getElementById('modalStaticAssetImageContainer');
+                if (!modalStaticAssetImageContainer) console.error("CRITICAL CACHE ERROR: modalStaticAssetImageContainer not found");
             modalStaticAssetLatestNotes = document.getElementById('modalStaticAssetLatestNotes');
+                if (!modalStaticAssetLatestNotes) console.error("CRITICAL CACHE ERROR: modalStaticAssetLatestNotes not found");
             modalLatestActivityDisplay = document.getElementById('modalLatestActivityDisplay');
+                if (!modalLatestActivityDisplay) console.error("CRITICAL CACHE ERROR: modalLatestActivityDisplay not found");
             modalNewActivityDateTimeInput = document.getElementById('modalNewActivityDateTime');
+                if (!modalNewActivityDateTimeInput) console.error("CRITICAL CACHE ERROR: modalNewActivityDateTimeInput not found");
             modalNewActivityNoteInput = document.getElementById('modalNewActivityNote');
+                if (!modalNewActivityNoteInput) console.error("CRITICAL CACHE ERROR: modalNewActivityNoteInput not found");
             modalNewActivityImageFileInput = document.getElementById('modalNewActivityImageFile');
+                if (!modalNewActivityImageFileInput) console.error("CRITICAL CACHE ERROR: modalNewActivityImageFileInput not found");
             modalNewActivityImagePreview = document.getElementById('modalNewActivityImagePreview');
+                if (!modalNewActivityImagePreview) console.error("CRITICAL CACHE ERROR: modalNewActivityImagePreview not found");
             saveModalActivityButton = document.getElementById('saveModalActivityButton');
+                if (!saveModalActivityButton) console.error("CRITICAL CACHE ERROR: saveModalActivityButton not found");
 
             fullAssetListContainer = document.getElementById('fullAssetListContainer');
+                if (!fullAssetListContainer) console.error("CRITICAL CACHE ERROR: fullAssetListContainer not found");
             assetListSearchInput = document.getElementById('assetListSearch');
+                if (!assetListSearchInput) console.error("CRITICAL CACHE ERROR: assetListSearchInput not found");
             assetTypeFilterSelect = document.getElementById('assetTypeFilter');
+                if (!assetTypeFilterSelect) console.error("CRITICAL CACHE ERROR: assetTypeFilterSelect not found");
 
             taskListContainer = document.getElementById('taskListContainer');
+                if (!taskListContainer) console.error("CRITICAL CACHE ERROR: taskListContainer not found");
             newTaskNameInput = document.getElementById('newTaskName');
+                if (!newTaskNameInput) console.error("CRITICAL CACHE ERROR: newTaskNameInput not found");
             newTaskDescriptionInput = document.getElementById('newTaskDescription');
+                if (!newTaskDescriptionInput) console.error("CRITICAL CACHE ERROR: newTaskDescriptionInput not found");
             newTaskDueDateInput = document.getElementById('newTaskDueDate');
+                if (!newTaskDueDateInput) console.error("CRITICAL CACHE ERROR: newTaskDueDateInput not found");
             newTaskAssetIdSelect = document.getElementById('newTaskAssetId');
+                if (!newTaskAssetIdSelect) console.error("CRITICAL CACHE ERROR: newTaskAssetIdSelect not found");
             newTaskMapZoneInput = document.getElementById('newTaskMapZone');
+                if (!newTaskMapZoneInput) console.error("CRITICAL CACHE ERROR: newTaskMapZoneInput not found");
             newTaskPriorityInput = document.getElementById('newTaskPriority');
+                if (!newTaskPriorityInput) console.error("CRITICAL CACHE ERROR: newTaskPriorityInput not found");
             showCompletedTasksToggle = document.getElementById('showCompletedTasksToggle');
+                if (!showCompletedTasksToggle) console.error("CRITICAL CACHE ERROR: showCompletedTasksToggle not found");
             saveTaskButton = document.getElementById('saveTaskButton');
+                if (!saveTaskButton) console.error("CRITICAL CACHE ERROR: saveTaskButton not found");
 
             imageZoomModal = document.getElementById('imageZoomModal');
+                if (!imageZoomModal) console.error("CRITICAL CACHE ERROR: imageZoomModal not found");
             zoomedImage = document.getElementById('zoomedImage');
+                if (!zoomedImage) console.error("CRITICAL CACHE ERROR: zoomedImage not found");
             assetInfoModal = document.getElementById('assetInfoModal');
+                if (!assetInfoModal) console.error("CRITICAL CACHE ERROR: assetInfoModal not found");
             taskLocationModal = document.getElementById('taskLocationModal');
+                if (!taskLocationModal) console.error("CRITICAL CACHE ERROR: taskLocationModal not found");
             taskLocationPickerMapElement = document.getElementById('taskLocationPickerMap');
+                if (!taskLocationPickerMapElement) console.error("CRITICAL CACHE ERROR: taskLocationPickerMapElement not found");
             newTaskLatInput = document.getElementById('newTaskLat');
+                if (!newTaskLatInput) console.error("CRITICAL CACHE ERROR: newTaskLatInput not found");
             newTaskLonInput = document.getElementById('newTaskLon');
+                if (!newTaskLonInput) console.error("CRITICAL CACHE ERROR: newTaskLonInput not found");
             taskLocationCoordsDisplay = document.getElementById('taskLocationCoordsDisplay');
+                if (!taskLocationCoordsDisplay) console.error("CRITICAL CACHE ERROR: taskLocationCoordsDisplay not found");
+            console.log("DOM element caching complete.");
         }
 
         function formatDateTimeForInput(isoString) {
@@ -591,6 +684,7 @@
         }
 
         function showLoading(isLoading, message = "Loading Data...") {
+            if (!loadingBox) { console.error("loadingBox not found"); return; }
             const loaderDiv = loadingBox.querySelector('.flex');
             if (loaderDiv) {
                  loaderDiv.innerHTML = `<div class="loader"></div><strong class="font-bold">${message.split('...')[0]}...</strong><span class="block sm:inline">${message.split('...')[1] || ''}</span>`;
@@ -966,8 +1060,8 @@
                 const defaultZoom = dashboardMap ? dashboardMap.getZoom() : 17;
 
                 taskLocationPickerMap = L.map('taskLocationPickerMap').setView(defaultCenter, defaultZoom);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri'
                 }).addTo(taskLocationPickerMap);
             } else {
                  taskLocationPickerMap.invalidateSize();
@@ -1338,16 +1432,37 @@
                 showUserMessage(taskMessageBox, taskMessageText, "Task saving is not configured (Apps Script URL missing).", false);
                 return;
             }
-            if (!saveTaskButton) return;
+             // Ensure saveTaskButton is cached before using it
+            if (!saveTaskButton) {
+                console.error("CRITICAL: saveTaskButton element is not cached or missing from DOM.");
+                showUserMessage(taskMessageBox, taskMessageText, "Task form error (Save button missing). Please refresh.", false);
+                return;
+            }
             saveTaskButton.disabled = true;
             saveTaskButton.textContent = "Saving...";
+
+            const requiredInputs = {
+                newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput,
+                newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput,
+                newTaskLatInput, newTaskLonInput
+            };
+
+            for (const key in requiredInputs) {
+                if (!requiredInputs[key]) {
+                    console.error(`CRITICAL SAVE ERROR: ${key} element is null. Caching may have failed or ID is incorrect.`);
+                    showUserMessage(taskMessageBox, taskMessageText, `Task form error (element ${key} is missing). Please refresh.`, false);
+                    saveTaskButton.disabled = false;
+                    saveTaskButton.textContent = "Add Task to Sheet";
+                    return;
+                }
+            }
 
 
             const displayName = newTaskNameInput.value.trim();
             const description = newTaskDescriptionInput.value.trim();
             const dueDate = newTaskDueDateInput.value;
             const assetId = newTaskAssetIdSelect.value;
-            const mapZone = newTaskMapZoneInput.value.trim();
+            const mapZone = newTaskMapZoneInput.value.trim(); // This was the one erroring
             const priority = newTaskPriorityInput.value;
             const taskLat = newTaskLatInput.value.trim();
             const taskLon = newTaskLonInput.value.trim();
