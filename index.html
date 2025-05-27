@@ -93,8 +93,8 @@
 
         #farmMapViewport {
             width: 100%;
-            height: 70vh;
-            max-height: 700px;
+            height: 75vh;
+            max-height: 800px;
             border: 2px solid #acc6a0;
             border-radius: 8px;
             position: relative;
@@ -235,6 +235,28 @@
             margin-top: 0.5em;
             padding-top: 0.5em;
         }
+        /* Custom Leaflet DivIcon Styles */
+        .leaflet-div-icon {
+            background-clip: padding-box;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            line-height: 26px;
+            font-size: 13px;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+            border-width: 2px;
+            border-style: solid;
+        }
+        .tree-marker { background-color: rgba(76, 175, 80, 0.9); border-color: rgba(46, 125, 50, 1); }
+        .plant-marker { background-color: rgba(139, 195, 74, 0.9); border-color: rgba(104, 159, 56, 1); }
+        .poultry-marker { background-color: rgba(255, 193, 7, 0.9); border-color: rgba(251, 140, 0, 1); }
+        .structure-marker { background-color: rgba(158, 158, 158, 0.9); border-color: rgba(97, 97, 97, 1); }
+        .other-marker { background-color: rgba(33, 150, 243, 0.9); border-color: rgba(25, 118, 210, 1); }
     </style>
 </head>
 <body class="text-gray-800">
@@ -864,7 +886,24 @@
                 const lon = parseFloat(asset.lon);
 
                 if (!isNaN(lat) && !isNaN(lon)) {
-                    const marker = L.marker([lat, lon]).addTo(dashboardMap);
+                    let markerLabel = (asset.type ? asset.type.substring(0,1) : assetId.substring(0,1)).toUpperCase();
+                    let markerClass = 'other-marker'; // Default
+                    if (asset.type) {
+                        const assetTypeLower = asset.type.toLowerCase();
+                        if (assetTypeLower.includes('tree')) { markerClass = 'tree-marker'; }
+                        else if (assetTypeLower.includes('plant') || assetTypeLower.includes('vegetable')) { markerClass = 'plant-marker'; }
+                        else if (assetTypeLower.includes('poultry')) { markerClass = 'poultry-marker'; }
+                        else if (assetTypeLower.includes('structure')) { markerClass = 'structure-marker';}
+                    }
+
+                    const divIcon = L.divIcon({
+                        className: `leaflet-div-icon ${markerClass}`,
+                        html: `<span>${markerLabel}</span>`,
+                        iconSize: [28, 28], // Match CSS
+                        iconAnchor: [14, 14] // Center of the icon
+                    });
+
+                    const marker = L.marker([lat, lon], { icon: divIcon }).addTo(dashboardMap);
                     
                     let popupContent = `<b>${asset.name || assetId}</b><br>${asset.type || 'N/A'}`;
                     let imageUrlToDisplay = asset.imageUrl || '';
