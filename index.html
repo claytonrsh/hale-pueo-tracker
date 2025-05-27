@@ -117,8 +117,18 @@
             max-height: 150px;
         }
 
-        #modalNewActivityImagePreview:empty, #modalNewActivityImagePreview[src="#"] {
+        #modalNewActivityImagePreview:empty, #modalNewActivityImagePreview[src="#"],
+        #taskModalNewActivityImagePreview:empty, #taskModalNewActivityImagePreview[src="#"] {
             display: none;
+        }
+         #taskModalNewActivityImagePreview {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #ddd;
+            object-fit: cover;
         }
         .notes-textarea {
             min-height: 80px;
@@ -137,6 +147,8 @@
         .priority-Low { color: #38a169; }
         .task-completed { text-decoration: line-through; color: #a0aec0; }
         .task-completed .font-semibold { font-weight: normal; }
+        .task-list-item { cursor: pointer; }
+
 
         .modal-overlay {
             position: fixed;
@@ -152,6 +164,9 @@
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #imageZoomModal.modal-overlay, #taskLocationModal.modal-overlay {
+            z-index: 1010;
         }
         .modal-overlay.active {
             opacity: 1;
@@ -311,7 +326,6 @@
             <div class="mb-4 p-3 border border-gray-200 rounded-lg bg-gray-50">
                 <h3 class="text-lg font-semibold mb-2">Asset Type Filters:</h3>
                 <div id="assetTypeFilterButtonsContainer" class="flex flex-wrap gap-2">
-                    {/* Type filter buttons will be populated here */}
                 </div>
             </div>
             <div id="farmMapViewport">
@@ -493,6 +507,58 @@
         </div>
     </div>
 
+    <div id="taskActivityModal" class="modal-overlay">
+        <div class="modal-content">
+            <button onclick="closeTaskActivityModal()" class="modal-close-button">&times;</button>
+            <h3 id="taskModalTaskName" class="text-2xl font-semibold text-gray-700 mb-1">Task Details</h3>
+            <p class="text-sm text-gray-500 mb-3">ID: <span id="taskModalTaskId"></span></p>
+            
+            <div id="taskModalStaticInfo" class="mb-4 p-4 border border-gray-200 rounded-md bg-white text-sm">
+                <p><strong>Description:</strong> <span id="taskModalDescription" class="whitespace-pre-wrap"></span></p>
+                <p class="mt-1"><strong>Due Date:</strong> <span id="taskModalDueDate"></span></p>
+                <p class="mt-1"><strong>Priority:</strong> <span id="taskModalPriority"></span></p>
+                <p class="mt-1"><strong>Related Asset:</strong> <span id="taskModalRelatedAsset"></span></p>
+                <p class="mt-1"><strong>Location:</strong> <span id="taskModalLocation"></span></p>
+                <p class="mt-1"><strong>Status:</strong> <span id="taskModalStatus"></span></p>
+                <p class="mt-1"><strong>Created:</strong> <span id="taskModalCreatedDate"></span></p>
+                <div id="taskModalCompletedDateContainer" class="hidden mt-1">
+                    <strong>Completed:</strong> <span id="taskModalCompletedDate"></span>
+                </div>
+            </div>
+
+            <hr class="my-6">
+
+            <div id="taskModalActivitySection">
+                <h4 class="font-semibold text-lg mb-3">Activities for this Task</h4>
+                <div id="taskSpecificActivityLogDisplay" class="mb-4 p-3 border border-dashed border-gray-300 rounded-md bg-gray-100 max-h-48 overflow-y-auto">
+                    <p class="text-center text-gray-500">No activities found for this task.</p>
+                </div>
+                <h4 class="font-semibold text-lg mb-3 mt-6">Add New Activity for this Task</h4>
+                <div id="taskModalAddActivityForm" class="space-y-3 bg-white p-4 border rounded-md">
+                    <div>
+                        <label for="taskModalNewActivityDateTime" class="block text-sm font-medium text-gray-700">Date & Time of Activity:</label>
+                        <input type="datetime-local" id="taskModalNewActivityDateTime" class="form-datetime mt-1 block w-full rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="taskModalNewActivityNote" class="block text-sm font-medium text-gray-700">New Note:</label>
+                        <textarea id="taskModalNewActivityNote" rows="3" class="form-textarea notes-textarea mt-1 block w-full rounded-md p-2" placeholder="Enter activity details..."></textarea>
+                    </div>
+                    <div>
+                        <label for="taskModalNewActivityImageFile" class="block text-sm font-medium text-gray-700">Upload Photo (Optional):</label>
+                        <input type="file" id="taskModalNewActivityImageFile" class="form-file mt-1 block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-green-50 file:text-green-700
+                                hover:file:bg-green-100" accept="image/*">
+                        <img id="taskModalNewActivityImagePreview" src="#" alt="Image Preview" class="mt-2 hidden" style="max-height: 150px;"/>
+                    </div>
+                    <button id="saveTaskSpecificActivityButton" onclick="saveTaskActivity()" class="action-button w-full">Save Activity to Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -505,9 +571,12 @@
         // --- Global Variables ---
         let farmData = {};
         let assetActivities = {};
+        let allActivitiesList = [];
         let taskListData = [];
         let selectedAssetIdForModal = null;
+        let currentOpenTaskId = null;
         let newActivitySelectedFile = null;
+        let newTaskActivitySelectedFile = null;
         let dashboardMap = null;
         let taskLocationPickerMap = null;
         let temporaryTaskMarker = null;
@@ -529,8 +598,13 @@
             showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage,
             assetInfoModal, taskLocationModal, taskLocationPickerMapElement,
             newTaskLatInput, newTaskLonInput, taskLocationCoordsDisplay,
-            assetTypeFilterButtonsContainer, showAllAssetsButton, hideAllAssetsButton;
-
+            assetTypeFilterButtonsContainer,
+            taskActivityModal, taskModalTaskName, taskModalTaskId, taskModalDescription, taskModalDueDate,
+            taskModalPriority, taskModalRelatedAsset, taskModalLocation, taskModalStatus,
+            taskModalCreatedDate, taskModalCompletedDateContainer, taskModalCompletedDate,
+            taskSpecificActivityLogDisplay, taskModalNewActivityDateTimeInput,
+            taskModalNewActivityNoteInput, taskModalNewActivityImageFileInput,
+            taskModalNewActivityImagePreview, saveTaskSpecificActivityButton;
 
         // --- FUNCTION DEFINITIONS ---
         function cacheDOMElements() {
@@ -584,9 +658,26 @@
             taskLocationCoordsDisplay = document.getElementById('taskLocationCoordsDisplay');
 
             assetTypeFilterButtonsContainer = document.getElementById('assetTypeFilterButtonsContainer');
-            showAllAssetsButton = document.getElementById('showAllAssetsButton'); // This element was removed from HTML
-            hideAllAssetsButton = document.getElementById('hideAllAssetsButton'); // This element was removed from HTML
 
+            taskActivityModal = document.getElementById('taskActivityModal');
+            taskModalTaskName = document.getElementById('taskModalTaskName');
+            taskModalTaskId = document.getElementById('taskModalTaskId');
+            taskModalDescription = document.getElementById('taskModalDescription');
+            taskModalDueDate = document.getElementById('taskModalDueDate');
+            taskModalPriority = document.getElementById('taskModalPriority');
+            taskModalRelatedAsset = document.getElementById('taskModalRelatedAsset');
+            taskModalLocation = document.getElementById('taskModalLocation');
+            taskModalStatus = document.getElementById('taskModalStatus');
+            taskModalCreatedDate = document.getElementById('taskModalCreatedDate');
+            taskModalCompletedDateContainer = document.getElementById('taskModalCompletedDateContainer');
+            taskModalCompletedDate = document.getElementById('taskModalCompletedDate');
+            taskSpecificActivityLogDisplay = document.getElementById('taskSpecificActivityLogDisplay');
+            taskModalNewActivityDateTimeInput = document.getElementById('taskModalNewActivityDateTime');
+            taskModalNewActivityNoteInput = document.getElementById('taskModalNewActivityNote');
+            taskModalNewActivityImageFileInput = document.getElementById('taskModalNewActivityImageFile');
+            taskModalNewActivityImagePreview = document.getElementById('taskModalNewActivityImagePreview');
+            saveTaskSpecificActivityButton = document.getElementById('saveTaskSpecificActivityButton');
+            
             console.log("DOM element caching complete.");
         }
 
@@ -773,15 +864,20 @@
                 const data = await response.json();
                 
                 if (data.status === "success" && data.activities) {
+                    allActivitiesList = data.activities;
                     assetActivities = {};
-                    data.activities.forEach(activity => {
-                        if (!assetActivities[activity.assetId]) {
-                            assetActivities[activity.assetId] = [];
-                        }
-                        if (!assetActivities[activity.assetId].find(a => a.activityId === activity.activityId)) {
-                            assetActivities[activity.assetId].push(activity);
+
+                    allActivitiesList.forEach(activity => {
+                        if (activity.assetId) {
+                            if (!assetActivities[activity.assetId]) {
+                                assetActivities[activity.assetId] = [];
+                            }
+                            if (!assetActivities[activity.assetId].find(a => a.activityId === activity.activityId)) {
+                                assetActivities[activity.assetId].push(activity);
+                            }
                         }
                     });
+
                     for (const assetIdKey in assetActivities) {
                         assetActivities[assetIdKey].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
                     }
@@ -987,26 +1083,16 @@
             }
             recentActivityContainer.innerHTML = '';
 
-            let allActivitiesFlat = [];
-            for (const assetId in assetActivities) {
-                assetActivities[assetId].forEach(activity => {
-                    allActivitiesFlat.push({
-                        ...activity,
-                        assetName: farmData[assetId]?.name || assetId,
-                    });
-                });
-            }
-
-            if (allActivitiesFlat.length === 0) {
-                recentActivityContainer.innerHTML = '<p class="text-gray-500">No activities logged yet across all assets.</p>';
+            if (allActivitiesList.length === 0) {
+                recentActivityContainer.innerHTML = '<p class="text-gray-500">No activities logged yet.</p>';
                 return;
             }
 
-            allActivitiesFlat.sort((a, b) =>
+            const sortedActivities = [...allActivitiesList].sort((a, b) =>
                 new Date(b.userActivityTimestamp || b.timestamp) - new Date(a.userActivityTimestamp || a.timestamp)
             );
 
-            const activitiesToDisplay = allActivitiesFlat.slice(0, limit);
+            const activitiesToDisplay = sortedActivities.slice(0, limit);
 
             activitiesToDisplay.forEach(activity => {
                 const entryDiv = document.createElement('div');
@@ -1015,17 +1101,33 @@
                 const activityDateToDisplay = activity.userActivityTimestamp || activity.timestamp;
                 let imgHTML = '';
                 if (activity.activityImageUrl) {
-                    imgHTML = `<img src="${activity.activityImageUrl}" alt="Activity for ${activity.assetName}" class="activity-image my-2" 
+                    imgHTML = `<img src="${activity.activityImageUrl}" alt="Activity Image" class="activity-image my-2" 
                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                <p class="text-red-500 text-sm hidden">Image load failed for ${activity.activityImageUrl}</p>`;
                 }
+                
+                let contextName = "General Activity";
+                let contextId = activity.activityId;
+                let contextButton = '';
+
+                if (activity.taskId) {
+                    const relatedTask = taskListData.find(t => t.taskId === activity.taskId);
+                    contextName = relatedTask ? `Task: ${relatedTask.displayName}` : `Task ID: ${activity.taskId}`;
+                    contextId = activity.taskId;
+                    contextButton = `<button class="text-blue-500 hover:underline text-xs mt-2" onclick="openTaskActivityModal('${activity.taskId}')">View Task & Activities</button>`;
+                } else if (activity.assetId && farmData[activity.assetId]) {
+                    contextName = farmData[activity.assetId].name || activity.assetId;
+                    contextId = activity.assetId;
+                    contextButton = `<button class="text-blue-500 hover:underline text-xs mt-2" onclick="openAssetModal('${activity.assetId}')">View Asset & Full Log</button>`;
+                }
+
 
                 entryDiv.innerHTML = `
-                    <h4 class="font-semibold text-md">${activity.assetName} <span class="text-xs text-gray-400">(${activity.assetId})</span></h4>
+                    <h4 class="font-semibold text-md">${contextName} <span class="text-xs text-gray-400">(${contextId})</span></h4>
                     <p class="text-xs text-gray-500 mb-1">Activity Date: ${formatDisplayDateTime(activityDateToDisplay)}</p>
                     ${imgHTML}
                     <p class="text-sm whitespace-pre-wrap">${activity.noteText || "No note for this activity."}</p>
-                    <button class="text-blue-500 hover:underline text-xs mt-2" onclick="openAssetModal('${activity.assetId}')">View Asset & Full Log</button>
+                    ${contextButton}
                 `;
                 recentActivityContainer.appendChild(entryDiv);
             });
@@ -1153,11 +1255,18 @@
             }
             newActivitySelectedFile = null;
 
-            assetInfoModal.classList.add('active');
+            if (assetInfoModal) {
+                assetInfoModal.style.zIndex = "1005";
+                if (taskActivityModal) taskActivityModal.style.zIndex = "1000";
+                assetInfoModal.classList.add('active');
+            }
         }
 
         function closeAssetModal() {
-            assetInfoModal.classList.remove('active');
+            if (assetInfoModal) {
+                assetInfoModal.classList.remove('active');
+                assetInfoModal.style.zIndex = "1000";
+            }
             selectedAssetIdForModal = null;
             document.querySelectorAll('.map-asset').forEach(item => item.classList.remove('selected-on-map'));
              if (modalNewActivityImagePreview) {
@@ -1168,10 +1277,16 @@
         }
 
         function displayModalActivityLog(assetIdToDisplay) {
+            if (!modalLatestActivityDisplay) return;
             modalLatestActivityDisplay.innerHTML = `<p class="text-center text-gray-500">No activities found for this asset.</p>`;
-            if (assetActivities[assetIdToDisplay] && assetActivities[assetIdToDisplay].length > 0) {
+            
+            const activitiesForAsset = allActivitiesList.filter(activity => activity.assetId === assetIdToDisplay);
+
+            if (activitiesForAsset.length > 0) {
                 modalLatestActivityDisplay.innerHTML = '';
-                [...assetActivities[assetIdToDisplay]].reverse().forEach(activity => {
+                activitiesForAsset.sort((a,b) => new Date(b.userActivityTimestamp || b.timestamp) - new Date(a.userActivityTimestamp || a.timestamp));
+                
+                activitiesForAsset.forEach(activity => {
                     const entryDiv = document.createElement('div');
                     entryDiv.className = 'activity-log-entry';
                     const activityDateToDisplay = activity.userActivityTimestamp || activity.timestamp;
@@ -1232,7 +1347,8 @@
                 activityId: activityId,
                 imageData: imageData,
                 imageFileName: imageFileName,
-                imageMimeType: imageMimeType
+                imageMimeType: imageMimeType,
+                taskId: null
             };
             
             showUserMessage(activityMessageBox, activityMessageText, "Saving activity...", null, 10000);
@@ -1267,11 +1383,15 @@
                     delete activityData.imageFileName;
                     delete activityData.imageMimeType;
 
-                    if (!assetActivities[selectedAssetIdForModal]) {
-                        assetActivities[selectedAssetIdForModal] = [];
+                    allActivitiesList.push(activityData);
+                    if (activityData.assetId) {
+                        if (!assetActivities[activityData.assetId]) {
+                            assetActivities[activityData.assetId] = [];
+                        }
+                        assetActivities[activityData.assetId].push(activityData);
+                        assetActivities[activityData.assetId].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
                     }
-                    assetActivities[selectedAssetIdForModal].push(activityData);
-                    assetActivities[selectedAssetIdForModal].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
+
 
                     openAssetModal(selectedAssetIdForModal);
                     populateRecentActivityLog();
@@ -1307,11 +1427,15 @@
             const showCompleted = showCompletedTasksToggle ? showCompletedTasksToggle.checked : false;
             
             const filteredTasks = taskListData.filter(task => {
-                return showCompleted || task.status !== "Completed";
+                if (showCompleted) {
+                    return task.status === "Completed";
+                } else {
+                    return task.status !== "Completed";
+                }
             });
 
             if (filteredTasks.length === 0) {
-                taskListContainer.innerHTML = `<p class="text-gray-500">${showCompleted ? 'No tasks found.' : 'No open tasks found. Toggle "Show Completed Tasks" to see all.'}</p>`;
+                taskListContainer.innerHTML = `<p class="text-gray-500">${showCompleted ? 'No completed tasks found.' : 'No open tasks found.'}</p>`;
                 return;
             }
 
@@ -1338,6 +1462,7 @@
             filteredTasks.forEach(task => {
                 const taskDiv = document.createElement('div');
                 taskDiv.className = `task-list-item p-3 border rounded-md bg-gray-50 shadow-sm ${task.status === "Completed" ? 'opacity-70' : ''}`;
+                taskDiv.addEventListener('click', () => openTaskActivityModal(task.taskId));
                 
                 let priorityClass = '';
                 switch (task.priority) {
@@ -1351,7 +1476,7 @@
                 taskDiv.innerHTML = `
                     <div class="flex items-start">
                         <input type="checkbox" id="task-complete-${task.taskId}" class="form-input h-5 w-5 text-green-600 focus:ring-green-500 mr-3 mt-1" 
-                               onchange="handleTaskCompletionChange('${task.taskId}', this.checked)" ${isCompleted ? 'checked' : ''}>
+                               onchange="event.stopPropagation(); handleTaskCompletionChange('${task.taskId}', this.checked)" ${isCompleted ? 'checked' : ''}>
                         <div class="flex-1">
                             <h4 class="font-semibold text-md ${priorityClass} ${isCompleted ? 'task-completed' : ''}">${task.displayName || 'Unnamed Task'} 
                                 <span class="text-xs text-gray-400 ml-2">(ID: ${task.taskId})</span>
@@ -1562,6 +1687,224 @@
             }
         }
 
+        function openTaskActivityModal(taskId) {
+            console.log("Opening task activity modal for task ID:", taskId);
+            currentOpenTaskId = taskId;
+            const task = taskListData.find(t => t.taskId === taskId);
+
+            if (!task) {
+                console.error("Task not found for ID:", taskId);
+                showUserMessage(taskMessageBox, taskMessageText, "Could not find task details.", false);
+                return;
+            }
+            if (!taskActivityModal) {
+                console.error("Task activity modal element not found.");
+                return;
+            }
+            
+            if (taskActivityModal) taskActivityModal.style.zIndex = "1005";
+            if (assetInfoModal) assetInfoModal.style.zIndex = "1000";
+
+
+            taskModalTaskName.textContent = task.displayName || 'N/A';
+            taskModalTaskId.textContent = task.taskId || 'N/A';
+            taskModalDescription.textContent = task.description || 'N/A';
+            taskModalDueDate.textContent = task.dueDate ? formatDisplayDateTime(task.dueDate) : 'N/A';
+            taskModalPriority.textContent = task.priority || 'N/A';
+            taskModalRelatedAsset.textContent = task.assetId ? (farmData[task.assetId]?.name || task.assetId) : 'None';
+            taskModalLocation.textContent = (task.taskLat && task.taskLon) ? `Lat: ${parseFloat(task.taskLat).toFixed(4)}, Lon: ${parseFloat(task.taskLon).toFixed(4)}` : 'Not set';
+            taskModalStatus.textContent = task.status || 'N/A';
+            taskModalCreatedDate.textContent = formatDisplayDateTime(task.createdDate);
+
+            if (task.status === "Completed" && task.completedDate) {
+                taskModalCompletedDate.textContent = formatDisplayDateTime(task.completedDate);
+                taskModalCompletedDateContainer.classList.remove('hidden');
+            } else {
+                taskModalCompletedDateContainer.classList.add('hidden');
+            }
+
+            displayTaskSpecificActivityLog(taskId);
+
+            taskModalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
+            taskModalNewActivityNoteInput.value = '';
+            if (taskModalNewActivityImageFileInput) taskModalNewActivityImageFileInput.value = null;
+            if (taskModalNewActivityImagePreview) {
+                taskModalNewActivityImagePreview.src = "#";
+                taskModalNewActivityImagePreview.classList.add('hidden');
+            }
+            newTaskActivitySelectedFile = null;
+
+            taskActivityModal.classList.add('active');
+        }
+
+        function closeTaskActivityModal() {
+            if (taskActivityModal) {
+                taskActivityModal.classList.remove('active');
+                taskActivityModal.style.zIndex = "1000";
+            }
+            currentOpenTaskId = null;
+            newTaskActivitySelectedFile = null;
+             if (taskModalNewActivityImagePreview) {
+                taskModalNewActivityImagePreview.src = "#";
+                taskModalNewActivityImagePreview.classList.add('hidden');
+            }
+        }
+
+        function displayTaskSpecificActivityLog(taskId) {
+            if (!taskSpecificActivityLogDisplay) {
+                console.error("Task specific activity log display element not found.");
+                return;
+            }
+            taskSpecificActivityLogDisplay.innerHTML = '<p class="text-center text-gray-500">Loading activities...</p>';
+            
+            const relevantActivities = allActivitiesList.filter(activity => activity.taskId === taskId);
+
+            if (relevantActivities.length === 0) {
+                taskSpecificActivityLogDisplay.innerHTML = '<p class="text-center text-gray-500">No activities found for this task.</p>';
+                return;
+            }
+
+            relevantActivities.sort((a, b) => new Date(b.userActivityTimestamp || b.timestamp) - new Date(a.userActivityTimestamp || a.timestamp));
+            
+            taskSpecificActivityLogDisplay.innerHTML = '';
+            relevantActivities.forEach(activity => {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'activity-log-entry';
+                const activityDateToDisplay = activity.userActivityTimestamp || activity.timestamp;
+                let imgHTML = '';
+                if (activity.activityImageUrl) {
+                    imgHTML = `<img src="${activity.activityImageUrl}" alt="Activity Image" class="activity-image my-2" 
+                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                               <p class="text-red-500 text-sm hidden">Image load failed for ${activity.activityImageUrl}</p>`;
+                }
+                entryDiv.innerHTML = `
+                    <p class="text-xs text-gray-500 mb-1">Activity Date: ${formatDisplayDateTime(activityDateToDisplay)}</p>
+                    ${imgHTML}
+                    <p class="text-sm whitespace-pre-wrap">${activity.noteText || "No note for this activity."}</p>
+                    ${activity.assetId && farmData[activity.assetId] ? `<button class="text-blue-500 hover:underline text-xs mt-1" onclick="openAssetModal('${activity.assetId}')">View Related Asset</button>` : ''}
+                `;
+                taskSpecificActivityLogDisplay.appendChild(entryDiv);
+            });
+        }
+
+        async function saveTaskActivity() {
+            if (!currentOpenTaskId) {
+                showUserMessage(activityMessageBox, activityMessageText, "No task selected to log activity against.", false);
+                return;
+            }
+            if (!saveTaskSpecificActivityButton) return;
+
+            saveTaskSpecificActivityButton.disabled = true;
+            saveTaskSpecificActivityButton.textContent = 'Saving...';
+
+            const task = taskListData.find(t => t.taskId === currentOpenTaskId);
+            const associatedAssetId = task ? task.assetId : null;
+
+            const userActivityTimestamp = taskModalNewActivityDateTimeInput.value ? new Date(taskModalNewActivityDateTimeInput.value).toISOString() : new Date().toISOString();
+            const noteText = taskModalNewActivityNoteInput.value.trim();
+            
+            let imageData = null;
+            let imageFileName = null;
+            let imageMimeType = null;
+
+            if (newTaskActivitySelectedFile) {
+                imageData = newTaskActivitySelectedFile.data;
+                imageFileName = newTaskActivitySelectedFile.name;
+                imageMimeType = newTaskActivitySelectedFile.type;
+            }
+
+            if (!noteText && !imageData && !taskModalNewActivityDateTimeInput.value) {
+                showUserMessage(activityMessageBox, activityMessageText, "Please enter some activity data.", null);
+                saveTaskSpecificActivityButton.disabled = false;
+                saveTaskSpecificActivityButton.textContent = 'Save Activity to Task';
+                return;
+            }
+
+            const loggingTimestamp = new Date().toISOString();
+            const activityId = `ACT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+            const activityData = {
+                dataType: "activity",
+                loggingTimestamp: loggingTimestamp,
+                userActivityTimestamp: userActivityTimestamp,
+                assetId: associatedAssetId || "",
+                taskId: currentOpenTaskId,
+                noteText: noteText,
+                activityId: activityId,
+                imageData: imageData,
+                imageFileName: imageFileName,
+                imageMimeType: imageMimeType
+            };
+            
+            showUserMessage(activityMessageBox, activityMessageText, "Saving task activity...", null, 10000);
+
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8', },
+                    body: JSON.stringify(activityData)
+                });
+                
+                if (response.ok) {
+                    const responseText = await response.text();
+                    try {
+                        const jsonResponse = JSON.parse(responseText);
+                        if (jsonResponse.status === "success") {
+                             showUserMessage(activityMessageBox, activityMessageText, `Activity for task ${currentOpenTaskId} saved!`, true);
+                             if (jsonResponse.activityImageUrl) {
+                                 activityData.activityImageUrl = jsonResponse.activityImageUrl;
+                             }
+                        } else {
+                            throw new Error(jsonResponse.message || "Apps Script reported an issue saving task activity.");
+                        }
+                    } catch (e) {
+                        console.warn("Task Activity save: Apps Script response not valid JSON, but HTTP status was OK. Assuming success.", responseText);
+                        showUserMessage(activityMessageBox, activityMessageText, "Task activity sent to sheet!", true);
+                    }
+                    
+                    delete activityData.imageData;
+                    delete activityData.imageFileName;
+                    delete activityData.imageMimeType;
+
+                    allActivitiesList.push(activityData);
+                    if (activityData.assetId) {
+                        if (!assetActivities[activityData.assetId]) {
+                            assetActivities[activityData.assetId] = [];
+                        }
+                        assetActivities[activityData.assetId].push(activityData);
+                        assetActivities[activityData.assetId].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
+                    }
+
+
+                    displayTaskSpecificActivityLog(currentOpenTaskId);
+                    populateRecentActivityLog();
+
+                } else {
+                    const errorText = await response.text();
+                    console.error("Server response error text (Task Activity):", errorText);
+                    throw new Error(`Failed to save task activity. Server responded with ${response.status}.`);
+                }
+            } catch (error) {
+                console.error("Full error object during saveTaskActivity:", error);
+                showUserMessage(activityMessageBox, activityMessageText, `Error saving task activity: ${getErrorMessage(error)}`, false);
+            } finally {
+                if (saveTaskSpecificActivityButton) {
+                    saveTaskSpecificActivityButton.disabled = false;
+                    saveTaskSpecificActivityButton.textContent = 'Save Activity to Task';
+                }
+                taskModalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
+                taskModalNewActivityNoteInput.value = '';
+                if (taskModalNewActivityImageFileInput) taskModalNewActivityImageFileInput.value = null;
+                if (taskModalNewActivityImagePreview) {
+                    taskModalNewActivityImagePreview.src = "#";
+                    taskModalNewActivityImagePreview.classList.add('hidden');
+                }
+                newTaskActivitySelectedFile = null;
+            }
+        }
+
 
         document.addEventListener('DOMContentLoaded', () => {
             cacheDOMElements();
@@ -1601,6 +1944,32 @@
                          if(modalNewActivityImagePreview) {
                             modalNewActivityImagePreview.src = "#";
                             modalNewActivityImagePreview.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+            if (taskModalNewActivityImageFileInput) {
+                taskModalNewActivityImageFileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            newTaskActivitySelectedFile = {
+                                name: file.name,
+                                type: file.type,
+                                data: e.target.result
+                            };
+                            if(taskModalNewActivityImagePreview) {
+                                taskModalNewActivityImagePreview.src = e.target.result;
+                                taskModalNewActivityImagePreview.classList.remove('hidden');
+                            }
+                        }
+                        reader.readAsDataURL(file);
+                    } else {
+                        newTaskActivitySelectedFile = null;
+                         if(taskModalNewActivityImagePreview) {
+                            taskModalNewActivityImagePreview.src = "#";
+                            taskModalNewActivityImagePreview.classList.add('hidden');
                         }
                     }
                 });
