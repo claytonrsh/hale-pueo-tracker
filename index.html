@@ -102,63 +102,22 @@
             margin-bottom: 1rem;
             background-color: #e6f0e1;
         }
-        #farmMapImage {
-            display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center center;
-        }
-        .map-asset-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-        .map-asset {
-            position: absolute;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-            pointer-events: auto;
-            transform: translate(-50%, -50%);
-        }
-        .map-asset:hover {
-            transform: translate(-50%, -50%) scale(1.25);
-            box-shadow: 0 0 12px rgba(0,0,0,0.5);
-            z-index: 15;
-        }
-        .map-asset.tree { background-color: rgba(76, 175, 80, 0.85); border: 1px solid rgba(46, 125, 50, 0.9); }
-        .map-asset.plant { background-color: rgba(139, 195, 74, 0.85); border: 1px solid rgba(104, 159, 56, 0.9); }
-        .map-asset.poultry { background-color: rgba(255, 193, 7, 0.85); border: 1px solid rgba(251, 140, 0, 0.9); }
-        .map-asset.structure { background-color: rgba(158, 158, 158, 0.85); border: 1px solid rgba(97, 97, 97, 0.9); }
-        .map-asset.other { background-color: rgba(33, 150, 243, 0.85); border: 1px solid rgba(25, 118, 210, 0.9); }
-        .map-asset.selected-on-map {
-            border: 3px solid #d32f2f;
-            transform: translate(-50%, -50%) scale(1.4);
-            z-index: 20;
-        }
-        .asset-image, .activity-image {
+       
+        .asset-image, .activity-image, .popup-image {
             max-width: 100%;
-            max-height: 200px;
             border-radius: 8px;
             margin-top: 0.5rem;
             margin-bottom: 0.5rem;
             border: 1px solid #ddd;
             object-fit: cover;
         }
+        .asset-image, .activity-image {
+             max-height: 200px;
+        }
+        .popup-image {
+            max-height: 150px;
+        }
+
         #modalNewActivityImagePreview:empty, #modalNewActivityImagePreview[src="#"] {
             display: none;
         }
@@ -173,13 +132,6 @@
         .activity-log-entry:last-child, .task-list-item:last-child, .recent-activity-item:last-child {
             border-bottom: none;
             margin-bottom: 0;
-        }
-        .subtitle-link {
-            color: #3182ce;
-            text-decoration: underline;
-        }
-        .subtitle-link:hover {
-            color: #2c5282;
         }
         .priority-High { color: #e53e3e; font-weight: bold; }
         .priority-Medium { color: #dd6b20; }
@@ -235,23 +187,7 @@
         .modal-close-button:hover {
             color: #333;
         }
-        .asset-list-item {
-            padding: 0.75rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.375rem;
-            margin-bottom: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .asset-list-item:hover {
-            background-color: #f7fafc;
-        }
-        .missing-location-flag {
-            font-size: 0.75rem;
-            color: #e53e3e;
-            font-style: italic;
-            margin-left: 0.5rem;
-        }
+        
         #imageZoomModal .modal-content {
             max-width: 90vw;
             max-height: 90vh;
@@ -306,12 +242,6 @@
     <div class="container">
         <header class="text-center mb-6">
             <h1 class="text-4xl font-bold text-[#5c4033]">Hale Pueo - homestead tracker</h1>
-            <p class="text-sm text-gray-600 mt-2">
-                All data is from this spreadsheet:
-                <a href="https://docs.google.com/spreadsheets/d/1j02KCSEBbB_nayAV45xxf9covYy1p9zULF2rOG2gdAQ/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="subtitle-link">
-                    Data Spreadsheet
-                </a>
-            </p>
         </header>
 
         <div class="mb-6 border-b border-gray-300">
@@ -356,14 +286,14 @@
         <div id="aboutTab" class="tab-content">
             <h2 class="text-3xl font-semibold text-gray-800 mb-4">About Hale Pueo Homestead</h2>
             <div class="prose max-w-none text-gray-700">
-                <p>Welcome to Hale Pueo, our little slice of paradise in Hāna, Maui!</p>
-                <figure class="my-4 float-right ml-4 w-1/2 md:w-1/3 clear-right">
-                    <p class="text-sm text-center italic text-gray-600 mb-1">Basic Farm Layout (click image to enlarge)</p>
+                 <h3 class="text-xl font-semibold mt-6 mb-1">Basic Farm Layout <span class="text-sm text-gray-500">(click image to enlarge)</span></h3>
+                <figure class="my-2">
                     <img src="https://i.imgur.com/YsWPqY9.jpeg"
                          alt="Hale Pueo Farm Layout"
-                         class="rounded-lg shadow-md cursor-pointer"
+                         class="rounded-lg shadow-md cursor-pointer w-full md:w-2/3 lg:w-1/2 mx-auto"
                          onclick="openImageZoomModal('https://i.imgur.com/YsWPqY9.jpeg')">
                 </figure>
+                <p class="mt-4">Welcome to Hale Pueo, our little slice of paradise in Hāna, Maui!</p>
                 <p>This homestead tracker is a digital companion to our efforts in cultivating a sustainable and productive 3-acre farm. We are home to a variety of fruit trees, a lively flock of chickens, and happy ducks enjoying the tropical environment.</p>
                 <h3 class="text-xl font-semibold mt-6 mb-2">Our Vision</h3>
                 <p>Our goal is to blend traditional farming wisdom with modern tools to create a thriving ecosystem. We believe in:
@@ -538,7 +468,7 @@
         let taskLocationPickerMap = null;
         let temporaryTaskMarker = null;
 
-        // --- DOM Elements (will be cached in window.onload) ---
+        // --- DOM Elements (will be cached) ---
         let messageBox, successMessageText, loadingBox, errorBox, errorMessageText,
             activityMessageBox, activityMessageText, taskMessageBox, taskMessageText,
             farmMapViewport,
@@ -951,7 +881,7 @@
                     }
 
                     if (imageUrlToDisplay) {
-                        popupContent += `<br><img src="${imageUrlToDisplay}" alt="Latest image for ${asset.name || assetId}" class="popup-image">`;
+                        popupContent += `<br><img src="${imageUrlToDisplay}" alt="Latest image for ${asset.name || assetId}" class="popup-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><p class="text-red-500 text-xs hidden">Image load failed.</p>`;
                     }
                     popupContent += `<div class="popup-notes">${notesToDisplay.length > 100 ? notesToDisplay.substring(0, 100) + '...' : notesToDisplay}</div>`;
                     popupContent += `<button class="text-blue-500 hover:underline text-xs p-1 mt-1 w-full text-center" onclick="openAssetModal('${assetId}')">View Full Details & Log</button>`;
@@ -1002,8 +932,8 @@
                 let imgHTML = '';
                 if (activity.activityImageUrl) {
                     imgHTML = `<img src="${activity.activityImageUrl}" alt="Activity for ${activity.assetName}" class="activity-image my-2" 
-                                    onerror="this.alt='Img load fail'; this.style.display='none'; this.nextElementSibling.style.display='block';">
-                               <p class="text-red-500 text-sm hidden">Failed to load: ${activity.activityImageUrl}</p>`;
+                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                               <p class="text-red-500 text-sm hidden">Image load failed for ${activity.activityImageUrl}</p>`;
                 }
 
                 entryDiv.innerHTML = `
