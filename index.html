@@ -270,6 +270,8 @@
         .poultry-marker { background-color: rgba(255, 193, 7, 0.9); border-color: rgba(251, 140, 0, 1); }
         .structure-marker { background-color: rgba(158, 158, 158, 0.9); border-color: rgba(97, 97, 97, 1); }
         .other-marker { background-color: rgba(33, 150, 243, 0.9); border-color: rgba(25, 118, 210, 1); }
+        .task-map-marker { background-color: rgba(156, 39, 176, 0.9); border-color: rgba(123, 31, 162, 1); }
+
 
         .filter-button {
             padding: 0.3rem 0.8rem;
@@ -292,7 +294,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem; /* Moved margin to bottom as it's now above the list */
+            margin-bottom: 1rem;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid #eee;
         }
@@ -348,7 +350,7 @@
 
         <div id="dashboardTab" class="tab-content active">
             <div class="mb-4 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                <h3 class="text-lg font-semibold mb-2">Asset Type Filters:</h3>
+                <h3 class="text-lg font-semibold mb-2">Map Filters:</h3>
                 <div id="assetTypeFilterButtonsContainer" class="flex flex-wrap gap-2">
                 </div>
             </div>
@@ -714,6 +716,12 @@
             taskModalNewActivityImagePreview = document.getElementById('taskModalNewActivityImagePreview');
             saveTaskSpecificActivityButton = document.getElementById('saveTaskSpecificActivityButton');
             
+            const essentialElements = { messageBox, successMessageText, loadingBox, errorBox, errorMessageText, activityMessageBox, activityMessageText, farmMapViewport, modalAssetName, modalStaticAssetId, modalStaticAssetName, modalStaticAssetType, modalStaticAssetDescription, modalStaticAssetLastActivityDate, modalStaticAssetImageContainer, modalStaticAssetLatestNotes, modalLatestActivityDisplay, modalNewActivityDateTimeInput, modalNewActivityNoteInput, modalNewActivityImageFileInput, modalNewActivityImagePreview, saveModalActivityButton, recentActivityContainer, taskListContainer, newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput, newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput, showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage, assetInfoModal, taskLocationModal, taskLocationPickerMapElement, newTaskLatInput, newTaskLonInput, taskLocationCoordsDisplay, assetTypeFilterButtonsContainer, taskActivityModal, taskModalTaskName, taskModalTaskId, taskModalDescription, taskModalDueDate, taskModalPriority, taskModalRelatedAsset, taskModalLocation, taskModalStatus, taskModalCreatedDate, taskModalCompletedDateContainer, taskModalCompletedDate, taskSpecificActivityLogDisplay, taskModalNewActivityDateTimeInput, taskModalNewActivityNoteInput, taskModalNewActivityImageFileInput, taskModalNewActivityImagePreview, saveTaskSpecificActivityButton, recentActivityPageInfo, prevRecentActivityPage, nextRecentActivityPage };
+            for (const key in essentialElements) {
+                if (!essentialElements[key]) {
+                    console.error(`CRITICAL CACHE ERROR: Element variable '${key}' is null. Expected ID: ${key}`);
+                }
+            }
             console.log("DOM element caching complete.");
         }
 
@@ -853,6 +861,7 @@
         }
         
         async function loadInitialData() {
+            console.log("loadInitialData started");
             showLoading(true, "Loading initial asset data...");
             try {
                 if (GOOGLE_SHEET_CSV_URL === 'YOUR_GOOGLE_SHEET_PUBLISHED_CSV_URL_HERE' || !GOOGLE_SHEET_CSV_URL) {
@@ -869,16 +878,17 @@
                 } else if (Object.keys(farmData).length === 0 && farmCsvText.trim() === '') {
                     throw new Error("Asset Sheet CSV data empty.");
                 }
+                console.log("Farm data loaded:", farmData);
                 showUserMessage(messageBox, successMessageText, "Asset list loaded.", true, 3000);
-
+                
+                populateAssetTypeFilterButtons();
                 initializeDashboardMap();
+                
                 await loadActivitiesFromSheet();
                 await loadTasksFromSheet();
                 
-                populateRecentActivityLog();
                 populateTaskAssetIdDropdown();
-                populateTasksDisplay();
-                populateAssetTypeFilterButtons();
+                console.log("loadInitialData finished");
                 
             } catch (error) {
                 console.error("Load initial data error:", error);
@@ -889,6 +899,7 @@
         }
 
         async function loadActivitiesFromSheet() {
+             console.log("loadActivitiesFromSheet started");
              if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
                 return;
             }
@@ -917,6 +928,7 @@
                     for (const assetIdKey in assetActivities) {
                         assetActivities[assetIdKey].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
                     }
+                    console.log("Activities loaded and processed:", allActivitiesList, assetActivities);
                     showUserMessage(messageBox, successMessageText, "Activities loaded.", true, 3000);
                     populateRecentActivityLog();
                 } else {
@@ -929,6 +941,7 @@
         }
 
         async function loadTasksFromSheet() {
+            console.log("loadTasksFromSheet started");
              if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
                 if(taskListContainer) taskListContainer.innerHTML = `<p class="text-gray-500">Task loading not configured.</p>`;
                 return;
@@ -941,8 +954,10 @@
                 const data = await response.json();
                 if (data.status === "success" && data.tasks) {
                     taskListData = data.tasks;
+                    console.log("Tasks loaded and processed:", taskListData);
                     showUserMessage(messageBox, successMessageText, "Tasks loaded successfully.", true, 3000);
                     populateTasksDisplay();
+                    populateLeafletMapMarkers();
                 } else {
                     throw new Error(data.message || "Failed to parse tasks.");
                 }
@@ -987,11 +1002,9 @@
         }
         
         function populateLeafletMapMarkers() {
+            console.log("Populating map markers. Current visibility state:", JSON.stringify(assetTypeVisibility));
             if (!dashboardMap) {
                 console.warn("populateLeafletMapMarkers called but dashboardMap is not initialized.");
-                return;
-            }
-            if (Object.keys(farmData).length === 0) {
                 return;
             }
             
@@ -1002,69 +1015,101 @@
             });
 
             let markersAddedCount = 0;
-            Object.keys(farmData).forEach(assetId => {
-                const asset = farmData[assetId];
-                const lat = parseFloat(asset.lat);
-                const lon = parseFloat(asset.lon);
 
-                const assetType = asset.type || 'Other';
-                if (!assetTypeVisibility[assetType] && assetType !== 'Other' && !assetTypeVisibility['Other']) {
-                     if (assetTypeVisibility['All'] === false) return;
-                     if (assetTypeVisibility[assetType] === false) return;
-                }
+            // Populate Asset Markers
+            if (Object.keys(farmData).length > 0) {
+                Object.keys(farmData).forEach(assetId => {
+                    const asset = farmData[assetId];
+                    const lat = parseFloat(asset.lat);
+                    const lon = parseFloat(asset.lon);
+                    const assetTypeForFilter = asset.type || 'Other';
 
+                    if (assetTypeVisibility[assetTypeForFilter] === true) {
+                        if (!isNaN(lat) && !isNaN(lon)) {
+                            let markerLabel = (asset.type ? asset.type.substring(0,1) : assetId.substring(0,1)).toUpperCase();
+                            let markerClassName = 'leaflet-div-icon other-marker';
+                            if (asset.type) {
+                                const assetTypeLower = asset.type.toLowerCase();
+                                if (assetTypeLower.includes('tree')) { markerClassName = 'leaflet-div-icon tree-marker'; }
+                                else if (assetTypeLower.includes('plant') || assetTypeLower.includes('vegetable')) { markerClassName = 'leaflet-div-icon plant-marker'; }
+                                else if (assetTypeLower.includes('poultry')) { markerClassName = 'leaflet-div-icon poultry-marker'; }
+                                else if (assetTypeLower.includes('structure')) { markerClassName = 'leaflet-div-icon structure-marker';}
+                            }
 
-                if (!isNaN(lat) && !isNaN(lon)) {
-                    let markerLabel = (asset.type ? asset.type.substring(0,1) : assetId.substring(0,1)).toUpperCase();
-                    let markerClassName = 'leaflet-div-icon other-marker';
-                    if (asset.type) {
-                        const assetTypeLower = asset.type.toLowerCase();
-                        if (assetTypeLower.includes('tree')) { markerClassName = 'leaflet-div-icon tree-marker'; }
-                        else if (assetTypeLower.includes('plant') || assetTypeLower.includes('vegetable')) { markerClassName = 'leaflet-div-icon plant-marker'; }
-                        else if (assetTypeLower.includes('poultry')) { markerClassName = 'leaflet-div-icon poultry-marker'; }
-                        else if (assetTypeLower.includes('structure')) { markerClassName = 'leaflet-div-icon structure-marker';}
-                    }
+                            const divIcon = L.divIcon({
+                                className: markerClassName,
+                                html: `<span>${markerLabel}</span>`,
+                                iconSize: [28, 28],
+                                iconAnchor: [14, 14]
+                            });
 
-                    const divIcon = L.divIcon({
-                        className: markerClassName,
-                        html: `<span>${markerLabel}</span>`,
-                        iconSize: [28, 28],
-                        iconAnchor: [14, 14]
-                    });
+                            const marker = L.marker([lat, lon], { icon: divIcon }).addTo(dashboardMap);
+                            
+                            let popupContent = `<b>${asset.name || assetId}</b><br>${asset.type || 'N/A'}`;
+                            let imageUrlToDisplay = asset.imageUrl || '';
+                            let notesToDisplay = asset.description || 'No description.';
 
-                    const marker = L.marker([lat, lon], { icon: divIcon }).addTo(dashboardMap);
-                    
-                    let popupContent = `<b>${asset.name || assetId}</b><br>${asset.type || 'N/A'}`;
-                    let imageUrlToDisplay = asset.imageUrl || '';
-                    let notesToDisplay = asset.description || 'No description.';
+                            if (assetActivities[assetId] && assetActivities[assetId].length > 0) {
+                                const latestActivity = assetActivities[assetId][assetActivities[assetId].length - 1];
+                                if (latestActivity.activityImageUrl) {
+                                    imageUrlToDisplay = latestActivity.activityImageUrl;
+                                }
+                                if (latestActivity.noteText) {
+                                    notesToDisplay = latestActivity.noteText;
+                                }
+                            }
 
-                    if (assetActivities[assetId] && assetActivities[assetId].length > 0) {
-                        const latestActivity = assetActivities[assetId][assetActivities[assetId].length - 1];
-                        if (latestActivity.activityImageUrl) {
-                            imageUrlToDisplay = latestActivity.activityImageUrl;
+                            if (imageUrlToDisplay) {
+                                popupContent += `<br><img src="${imageUrlToDisplay}" alt="Latest image for ${asset.name || assetId}" class="popup-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><p class="text-red-500 text-xs hidden">Image load failed.</p>`;
+                            }
+                            popupContent += `<div class="popup-notes">${notesToDisplay.length > 100 ? notesToDisplay.substring(0, 100) + '...' : notesToDisplay}</div>`;
+                            popupContent += `<button class="text-blue-500 hover:underline text-xs p-1 mt-1 w-full text-center" onclick="openAssetModal('${assetId}')">View Full Details & Log</button>`;
+
+                            marker.bindPopup(popupContent, {maxWidth: 250});
+                            markersAddedCount++;
                         }
-                        if (latestActivity.noteText) {
-                            notesToDisplay = latestActivity.noteText;
-                        }
+                    }
+                });
+            }
+
+            // Populate Task Markers
+            if (assetTypeVisibility['Tasks'] === true && taskListData && taskListData.length > 0) {
+                console.log("Attempting to populate task markers. Task visibility is true. Task count:", taskListData.length);
+                taskListData.forEach(task => {
+                    if (task.status === "Completed") return;
+
+                    let taskLat, taskLon;
+                    if (task.taskLat && task.taskLon && !isNaN(parseFloat(task.taskLat)) && !isNaN(parseFloat(task.taskLon))) {
+                        taskLat = parseFloat(task.taskLat);
+                        taskLon = parseFloat(task.taskLon);
+                    } else if (task.assetId && farmData[task.assetId] && !isNaN(parseFloat(farmData[task.assetId].lat)) && !isNaN(parseFloat(farmData[task.assetId].lon))) {
+                        taskLat = parseFloat(farmData[task.assetId].lat);
+                        taskLon = parseFloat(farmData[task.assetId].lon);
                     }
 
-                    if (imageUrlToDisplay) {
-                        popupContent += `<br><img src="${imageUrlToDisplay}" alt="Latest image for ${asset.name || assetId}" class="popup-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><p class="text-red-500 text-xs hidden">Image load failed.</p>`;
+                    if (taskLat && taskLon) {
+                        const taskIcon = L.divIcon({
+                            className: 'leaflet-div-icon task-map-marker',
+                            html: '<span>T</span>',
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 14]
+                        });
+                        const taskMarker = L.marker([taskLat, taskLon], { icon: taskIcon }).addTo(dashboardMap);
+                        taskMarker.bindPopup(`<b>Task: ${task.displayName}</b><br>Priority: ${task.priority}<br>${task.assetId ? `Asset: ${farmData[task.assetId]?.name || task.assetId}<br>` : ''}Due: ${task.dueDate ? formatDisplayDateTime(task.dueDate) : 'N/A'}<br><button class="text-blue-500 hover:underline text-xs p-1 mt-1 w-full text-center" onclick="openTaskActivityModal('${task.taskId}')">View Task & Log Activity</button>`);
+                        markersAddedCount++;
                     }
-                    popupContent += `<div class="popup-notes">${notesToDisplay.length > 100 ? notesToDisplay.substring(0, 100) + '...' : notesToDisplay}</div>`;
-                    popupContent += `<button class="text-blue-500 hover:underline text-xs p-1 mt-1 w-full text-center" onclick="openAssetModal('${assetId}')">View Full Details & Log</button>`;
+                });
+            } else {
+                 console.log("Skipping task markers. Task visibility:", assetTypeVisibility['Tasks'], "Task list length:", taskListData ? taskListData.length : 'undefined');
+            }
 
-                    marker.bindPopup(popupContent, {maxWidth: 250});
-                    markersAddedCount++;
-                }
-            });
-            if (markersAddedCount === 0 && Object.keys(farmData).length > 0) {
-                console.warn("No valid lat/lon data found in farmData to create markers, or all types are filtered out.");
+            if (markersAddedCount === 0 && (Object.keys(farmData).length > 0 || (taskListData && taskListData.length > 0)) ) {
+                console.warn("No markers added. Check data and/or filters.");
             }
         }
 
         function populateAssetTypeFilterButtons() {
-            if (!assetTypeFilterButtonsContainer || Object.keys(farmData).length === 0) return;
+            if (!assetTypeFilterButtonsContainer ) return;
             assetTypeFilterButtonsContainer.innerHTML = '';
             assetTypeVisibility = {};
 
@@ -1072,7 +1117,7 @@
             Object.values(farmData).forEach(asset => {
                 types.add(asset.type || 'Other');
             });
-
+            types.add('Tasks');
             types.add('All');
 
             Array.from(types).sort().forEach(type => {
@@ -1088,8 +1133,10 @@
                          Object.keys(assetTypeVisibility).forEach(key => assetTypeVisibility[key] = activateAll);
                     } else {
                         assetTypeVisibility[type] = !assetTypeVisibility[type];
-                        const allOthersActive = Object.keys(assetTypeVisibility).filter(k => k !== 'All').every(key => assetTypeVisibility[key]);
-                        assetTypeVisibility['All'] = allOthersActive;
+                        const allIndividualTypesActive = Object.keys(assetTypeVisibility)
+                            .filter(k => k !== 'All')
+                            .every(key => assetTypeVisibility[key]);
+                        assetTypeVisibility['All'] = allIndividualTypesActive;
                     }
                     updateFilterButtonStates();
                     populateLeafletMapMarkers();
@@ -1118,6 +1165,8 @@
                 return;
             }
             recentActivityContainer.innerHTML = '';
+            console.log("Populating recent activity. Total activities available:", allActivitiesList.length);
+
 
             if (allActivitiesList.length === 0) {
                 recentActivityContainer.innerHTML = '<p class="text-gray-500">No activities logged yet.</p>';
@@ -1191,7 +1240,16 @@
 
 
         function populateTaskAssetIdDropdown() {
-            if (!newTaskAssetIdSelect || Object.keys(farmData).length === 0) return;
+             if (!newTaskAssetIdSelect) {
+                console.warn("newTaskAssetIdSelect not found, cannot populate.");
+                return;
+            }
+            if (Object.keys(farmData).length === 0) {
+                console.log("Farm data not yet available for task asset dropdown.");
+                return;
+            }
+            console.log("Populating task asset ID dropdown.");
+
 
             while (newTaskAssetIdSelect.options.length > 1) {
                 newTaskAssetIdSelect.remove(1);
@@ -1254,6 +1312,11 @@
         }
 
         function openAssetModal(assetId) {
+            console.log("openAssetModal called for asset ID:", assetId);
+            if (!assetInfoModal) {
+                console.error("CRITICAL: assetInfoModal element is null in openAssetModal. Cannot open modal.");
+                return;
+            }
             selectedAssetIdForModal = assetId;
             const asset = farmData[assetId];
             if (!asset) {
@@ -1311,11 +1374,9 @@
             }
             newActivitySelectedFile = null;
 
-            if (assetInfoModal) {
-                assetInfoModal.style.zIndex = "1005";
-                if (taskActivityModal) taskActivityModal.style.zIndex = "1000";
-                assetInfoModal.classList.add('active');
-            }
+            assetInfoModal.style.zIndex = "1005";
+            if (taskActivityModal) taskActivityModal.style.zIndex = "1000";
+            assetInfoModal.classList.add('active');
         }
 
         function closeAssetModal() {
@@ -1477,7 +1538,11 @@
         }
 
         function populateTasksDisplay() {
-            if (!taskListContainer) return;
+            console.log("Populating tasks display. Task list data length:", taskListData.length);
+            if (!taskListContainer) {
+                console.error("Task list container not found in populateTasksDisplay.");
+                return;
+            }
             taskListContainer.innerHTML = '';
             
             const showCompleted = showCompletedTasksToggle ? showCompletedTasksToggle.checked : false;
@@ -1518,7 +1583,10 @@
             filteredTasks.forEach(task => {
                 const taskDiv = document.createElement('div');
                 taskDiv.className = `task-list-item p-3 border rounded-md bg-gray-50 shadow-sm ${task.status === "Completed" ? 'opacity-70' : ''}`;
-                taskDiv.addEventListener('click', () => openTaskActivityModal(task.taskId));
+                taskDiv.addEventListener('click', (event) => {
+                    console.log(`Task item clicked: ${task.taskId}`);
+                    openTaskActivityModal(task.taskId);
+                });
                 
                 let priorityClass = '';
                 switch (task.priority) {
@@ -1744,7 +1812,11 @@
         }
 
         function openTaskActivityModal(taskId) {
-            console.log("Opening task activity modal for task ID:", taskId);
+            console.log("openTaskActivityModal called for task ID:", taskId);
+            if (!taskActivityModal) {
+                console.error("CRITICAL: taskActivityModal element is null in openTaskActivityModal. Cannot open modal.");
+                return;
+            }
             currentOpenTaskId = taskId;
             const task = taskListData.find(t => t.taskId === taskId);
 
@@ -1753,12 +1825,8 @@
                 showUserMessage(taskMessageBox, taskMessageText, "Could not find task details.", false);
                 return;
             }
-            if (!taskActivityModal) {
-                console.error("Task activity modal element not found.");
-                return;
-            }
             
-            if (taskActivityModal) taskActivityModal.style.zIndex = "1005";
+            taskActivityModal.style.zIndex = "1005";
             if (assetInfoModal) assetInfoModal.style.zIndex = "1000";
 
 
@@ -1812,8 +1880,11 @@
                 return;
             }
             taskSpecificActivityLogDisplay.innerHTML = '<p class="text-center text-gray-500">Loading activities...</p>';
+            console.log(`Filtering allActivitiesList for taskId: ${taskId}. Total activities: ${allActivitiesList.length}`);
             
             const relevantActivities = allActivitiesList.filter(activity => activity.taskId === taskId);
+            console.log(`Found ${relevantActivities.length} activities for task ${taskId}`);
+
 
             if (relevantActivities.length === 0) {
                 taskSpecificActivityLogDisplay.innerHTML = '<p class="text-center text-gray-500">No activities found for this task.</p>';
