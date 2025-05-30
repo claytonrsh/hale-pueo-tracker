@@ -878,7 +878,7 @@
                 } else if (Object.keys(farmData).length === 0 && farmCsvText.trim() === '') {
                     throw new Error("Asset Sheet CSV data empty.");
                 }
-                console.log("Farm data loaded:", farmData);
+                console.log("Farm data loaded:", Object.keys(farmData).length, "assets");
                 showUserMessage(messageBox, successMessageText, "Asset list loaded.", true, 3000);
                 
                 populateAssetTypeFilterButtons();
@@ -887,8 +887,11 @@
                 await loadActivitiesFromSheet();
                 await loadTasksFromSheet();
                 
+                populateRecentActivityLog();
                 populateTaskAssetIdDropdown();
-                console.log("loadInitialData finished");
+                populateLeafletMapMarkers();
+                
+                console.log("loadInitialData finished successfully");
                 
             } catch (error) {
                 console.error("Load initial data error:", error);
@@ -928,9 +931,8 @@
                     for (const assetIdKey in assetActivities) {
                         assetActivities[assetIdKey].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
                     }
-                    console.log("Activities loaded and processed:", allActivitiesList, assetActivities);
+                    console.log("Activities loaded and processed. Count:", allActivitiesList.length);
                     showUserMessage(messageBox, successMessageText, "Activities loaded.", true, 3000);
-                    populateRecentActivityLog();
                 } else {
                     throw new Error(data.message || "Failed to parse activities.");
                 }
@@ -954,10 +956,9 @@
                 const data = await response.json();
                 if (data.status === "success" && data.tasks) {
                     taskListData = data.tasks;
-                    console.log("Tasks loaded and processed:", taskListData);
+                    console.log("Tasks loaded and processed. Count:", taskListData.length);
                     showUserMessage(messageBox, successMessageText, "Tasks loaded successfully.", true, 3000);
                     populateTasksDisplay();
-                    populateLeafletMapMarkers();
                 } else {
                     throw new Error(data.message || "Failed to parse tasks.");
                 }
@@ -994,7 +995,6 @@
                    maxZoom: 24
                 }).addTo(dashboardMap);
                 
-                populateLeafletMapMarkers();
             } catch (mapError) {
                 console.error("Error initializing Leaflet map:", mapError);
                 showUserMessage(errorBox, errorMessageText, `Error initializing map: ${getErrorMessage(mapError)}`, false);
@@ -1016,7 +1016,6 @@
 
             let markersAddedCount = 0;
 
-            // Populate Asset Markers
             if (Object.keys(farmData).length > 0) {
                 Object.keys(farmData).forEach(assetId => {
                     const asset = farmData[assetId];
@@ -1072,7 +1071,6 @@
                 });
             }
 
-            // Populate Task Markers
             if (assetTypeVisibility['Tasks'] === true && taskListData && taskListData.length > 0) {
                 console.log("Attempting to populate task markers. Task visibility is true. Task count:", taskListData.length);
                 taskListData.forEach(task => {
@@ -1165,7 +1163,7 @@
                 return;
             }
             recentActivityContainer.innerHTML = '';
-            console.log("Populating recent activity. Total activities available:", allActivitiesList.length);
+            console.log("Populating recent activity. Total activities available:", allActivitiesList.length, "Current task list length:", taskListData.length);
 
 
             if (allActivitiesList.length === 0) {
@@ -1770,6 +1768,7 @@
 
                     taskListData.push(newTaskForLocal);
                     populateTasksDisplay();
+                    populateLeafletMapMarkers(); // Refresh map to show new task if applicable
 
                     newTaskNameInput.value = '';
                     newTaskDescriptionInput.value = '';
