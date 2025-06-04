@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -598,6 +600,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
         // --- Configuration ---
         const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXl17fkaqYmdxU7pJ00Z4WWkglWndAJFhyKDz-axqR2u4zeUQOfgFR94eqp5ZipCwGZ3Ycm1eBu7Tl/pub?gid=0&single=true&output=csv';
@@ -613,6 +616,7 @@
         let newActivitySelectedFile = null;
         let newTaskActivitySelectedFile = null;
         let dashboardMap = null;
+        let markersClusterGroup = null; // For Leaflet.markercluster
         let taskLocationPickerMap = null;
         let temporaryTaskMarker = null;
         let assetTypeVisibility = {};
@@ -643,7 +647,7 @@
             taskSpecificActivityLogDisplay, taskModalNewActivityDateTimeInput,
             taskModalNewActivityNoteInput, taskModalNewActivityImageFileInput,
             taskModalNewActivityImagePreview, saveTaskSpecificActivityButton,
-            taskModalCompleteToggle; // Added for the new checkbox
+            taskModalCompleteToggle;
 
 
         // --- FUNCTION DEFINITIONS ---
@@ -1002,6 +1006,9 @@
                    maxZoom: 24
                 }).addTo(dashboardMap);
                 
+                markersClusterGroup = L.markerClusterGroup(); // Initialize cluster group
+                dashboardMap.addLayer(markersClusterGroup);
+
             } catch (mapError) {
                 console.error("Error initializing Leaflet map:", mapError);
                 showUserMessage(errorBox, errorMessageText, `Error initializing map: ${getErrorMessage(mapError)}`, false);
@@ -1010,16 +1017,12 @@
         
         function populateLeafletMapMarkers() {
             console.log("Populating map markers. Current visibility state:", JSON.stringify(assetTypeVisibility));
-            if (!dashboardMap) {
-                console.warn("populateLeafletMapMarkers called but dashboardMap is not initialized.");
+            if (!dashboardMap || !markersClusterGroup) {
+                console.warn("populateLeafletMapMarkers called but dashboardMap or markersClusterGroup is not initialized.");
                 return;
             }
             
-            dashboardMap.eachLayer(function (layer) {
-                if (layer instanceof L.Marker) {
-                    dashboardMap.removeLayer(layer);
-                }
-            });
+            markersClusterGroup.clearLayers(); // Clear existing markers from the cluster group
 
             let markersAddedCount = 0;
 
@@ -1049,7 +1052,7 @@
                                 iconAnchor: [14, 14]
                             });
 
-                            const marker = L.marker([lat, lon], { icon: divIcon }).addTo(dashboardMap);
+                            const marker = L.marker([lat, lon], { icon: divIcon });
                             
                             let popupContent = `<b>${asset.name || assetId}</b><br>${asset.type || 'N/A'}`;
                             let imageUrlToDisplay = asset.imageUrl || '';
@@ -1072,6 +1075,7 @@
                             popupContent += `<button class="text-blue-500 hover:underline text-xs p-1 mt-1 w-full text-center" onclick="openAssetModal('${assetId}')">View Full Details & Log</button>`;
 
                             marker.bindPopup(popupContent, {maxWidth: 250});
+                            markersClusterGroup.addLayer(marker); // Add to cluster group
                             markersAddedCount++;
                         }
                     }
@@ -1099,8 +1103,9 @@
                             iconSize: [28, 28],
                             iconAnchor: [14, 14]
                         });
-                        const taskMarker = L.marker([taskLat, taskLon], { icon: taskIcon }).addTo(dashboardMap);
+                        const taskMarker = L.marker([taskLat, taskLon], { icon: taskIcon });
                         taskMarker.bindPopup(`<b>Task: ${task.displayName}</b><br>Priority: ${task.priority}<br>${task.assetId ? `Asset: ${farmData[task.assetId]?.name || task.assetId}<br>` : ''}Due: ${task.dueDate ? formatDisplayDateTime(task.dueDate) : 'N/A'}<br><button class="text-blue-500 hover:underline text-xs p-1 mt-1 w-full text-center" onclick="openTaskActivityModal('${task.taskId}')">View Task & Log Activity</button>`);
+                        markersClusterGroup.addLayer(taskMarker); // Add to cluster group
                         markersAddedCount++;
                     }
                 });
@@ -1663,7 +1668,6 @@
                             taskListData[taskIndex].completedDate = newStatus === "Completed" ? new Date().toISOString() : "";
                         }
                         populateTasksDisplay();
-                        // If the task modal is open for this task, update its status too
                         if (taskActivityModal && taskActivityModal.classList.contains('active') && currentOpenTaskId === taskId) {
                             taskModalStatus.textContent = newStatus;
                             if (newStatus === "Completed" && taskListData[taskIndex].completedDate) {
