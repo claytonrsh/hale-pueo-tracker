@@ -545,6 +545,10 @@
             <p class="text-sm text-gray-500 mb-3">ID: <span id="taskModalTaskId"></span></p>
             
             <div id="taskModalStaticInfo" class="mb-4 p-4 border border-gray-200 rounded-md bg-white text-sm">
+                <div class="flex items-center mb-2">
+                    <input type="checkbox" id="taskModalCompleteToggle" class="form-input h-5 w-5 text-green-600 focus:ring-green-500 mr-2">
+                    <label for="taskModalCompleteToggle" class="text-sm font-medium text-gray-700">Mark as Complete</label>
+                </div>
                 <p><strong>Description:</strong> <span id="taskModalDescription" class="whitespace-pre-wrap"></span></p>
                 <p class="mt-1"><strong>Due Date:</strong> <span id="taskModalDueDate"></span></p>
                 <p class="mt-1"><strong>Priority:</strong> <span id="taskModalPriority"></span></p>
@@ -638,7 +642,9 @@
             taskModalCreatedDate, taskModalCompletedDateContainer, taskModalCompletedDate,
             taskSpecificActivityLogDisplay, taskModalNewActivityDateTimeInput,
             taskModalNewActivityNoteInput, taskModalNewActivityImageFileInput,
-            taskModalNewActivityImagePreview, saveTaskSpecificActivityButton;
+            taskModalNewActivityImagePreview, saveTaskSpecificActivityButton,
+            taskModalCompleteToggle; // Added for the new checkbox
+
 
         // --- FUNCTION DEFINITIONS ---
         function cacheDOMElements() {
@@ -715,8 +721,9 @@
             taskModalNewActivityImageFileInput = document.getElementById('taskModalNewActivityImageFile');
             taskModalNewActivityImagePreview = document.getElementById('taskModalNewActivityImagePreview');
             saveTaskSpecificActivityButton = document.getElementById('saveTaskSpecificActivityButton');
+            taskModalCompleteToggle = document.getElementById('taskModalCompleteToggle');
             
-            const essentialElements = { messageBox, successMessageText, loadingBox, errorBox, errorMessageText, activityMessageBox, activityMessageText, farmMapViewport, modalAssetName, modalStaticAssetId, modalStaticAssetName, modalStaticAssetType, modalStaticAssetDescription, modalStaticAssetLastActivityDate, modalStaticAssetImageContainer, modalStaticAssetLatestNotes, modalLatestActivityDisplay, modalNewActivityDateTimeInput, modalNewActivityNoteInput, modalNewActivityImageFileInput, modalNewActivityImagePreview, saveModalActivityButton, recentActivityContainer, taskListContainer, newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput, newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput, showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage, assetInfoModal, taskLocationModal, taskLocationPickerMapElement, newTaskLatInput, newTaskLonInput, taskLocationCoordsDisplay, assetTypeFilterButtonsContainer, taskActivityModal, taskModalTaskName, taskModalTaskId, taskModalDescription, taskModalDueDate, taskModalPriority, taskModalRelatedAsset, taskModalLocation, taskModalStatus, taskModalCreatedDate, taskModalCompletedDateContainer, taskModalCompletedDate, taskSpecificActivityLogDisplay, taskModalNewActivityDateTimeInput, taskModalNewActivityNoteInput, taskModalNewActivityImageFileInput, taskModalNewActivityImagePreview, saveTaskSpecificActivityButton, recentActivityPageInfo, prevRecentActivityPage, nextRecentActivityPage };
+            const essentialElements = { messageBox, successMessageText, loadingBox, errorBox, errorMessageText, activityMessageBox, activityMessageText, farmMapViewport, modalAssetName, modalStaticAssetId, modalStaticAssetName, modalStaticAssetType, modalStaticAssetDescription, modalStaticAssetLastActivityDate, modalStaticAssetImageContainer, modalStaticAssetLatestNotes, modalLatestActivityDisplay, modalNewActivityDateTimeInput, modalNewActivityNoteInput, modalNewActivityImageFileInput, modalNewActivityImagePreview, saveModalActivityButton, recentActivityContainer, taskListContainer, newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput, newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput, showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage, assetInfoModal, taskLocationModal, taskLocationPickerMapElement, newTaskLatInput, newTaskLonInput, taskLocationCoordsDisplay, assetTypeFilterButtonsContainer, taskActivityModal, taskModalTaskName, taskModalTaskId, taskModalDescription, taskModalDueDate, taskModalPriority, taskModalRelatedAsset, taskModalLocation, taskModalStatus, taskModalCreatedDate, taskModalCompletedDateContainer, taskModalCompletedDate, taskSpecificActivityLogDisplay, taskModalNewActivityDateTimeInput, taskModalNewActivityNoteInput, taskModalNewActivityImageFileInput, taskModalNewActivityImagePreview, saveTaskSpecificActivityButton, recentActivityPageInfo, prevRecentActivityPage, nextRecentActivityPage, taskModalCompleteToggle };
             for (const key in essentialElements) {
                 if (!essentialElements[key]) {
                     console.error(`CRITICAL CACHE ERROR: Element variable '${key}' is null. Expected ID: ${key}`);
@@ -887,7 +894,6 @@
                 await loadActivitiesFromSheet();
                 await loadTasksFromSheet();
                 
-                populateRecentActivityLog();
                 populateTaskAssetIdDropdown();
                 populateLeafletMapMarkers();
                 
@@ -933,6 +939,7 @@
                     }
                     console.log("Activities loaded and processed. Count:", allActivitiesList.length);
                     showUserMessage(messageBox, successMessageText, "Activities loaded.", true, 3000);
+                    populateRecentActivityLog();
                 } else {
                     throw new Error(data.message || "Failed to parse activities.");
                 }
@@ -1656,6 +1663,16 @@
                             taskListData[taskIndex].completedDate = newStatus === "Completed" ? new Date().toISOString() : "";
                         }
                         populateTasksDisplay();
+                        // If the task modal is open for this task, update its status too
+                        if (taskActivityModal && taskActivityModal.classList.contains('active') && currentOpenTaskId === taskId) {
+                            taskModalStatus.textContent = newStatus;
+                            if (newStatus === "Completed" && taskListData[taskIndex].completedDate) {
+                                taskModalCompletedDate.textContent = formatDisplayDateTime(taskListData[taskIndex].completedDate);
+                                taskModalCompletedDateContainer.classList.remove('hidden');
+                            } else {
+                                taskModalCompletedDateContainer.classList.add('hidden');
+                            }
+                        }
                     }
 
                 } else {
@@ -1768,7 +1785,7 @@
 
                     taskListData.push(newTaskForLocal);
                     populateTasksDisplay();
-                    populateLeafletMapMarkers(); // Refresh map to show new task if applicable
+                    populateLeafletMapMarkers();
 
                     newTaskNameInput.value = '';
                     newTaskDescriptionInput.value = '';
@@ -1838,6 +1855,20 @@
             taskModalLocation.textContent = (task.taskLat && task.taskLon) ? `Lat: ${parseFloat(task.taskLat).toFixed(4)}, Lon: ${parseFloat(task.taskLon).toFixed(4)}` : 'Not set';
             taskModalStatus.textContent = task.status || 'N/A';
             taskModalCreatedDate.textContent = formatDisplayDateTime(task.createdDate);
+
+            if (taskModalCompleteToggle) {
+                taskModalCompleteToggle.checked = task.status === "Completed";
+                // Remove old listener to prevent duplicates if modal is reopened
+                const newToggle = taskModalCompleteToggle.cloneNode(true);
+                taskModalCompleteToggle.parentNode.replaceChild(newToggle, taskModalCompleteToggle);
+                taskModalCompleteToggle = newToggle; // Update the reference
+                
+                taskModalCompleteToggle.addEventListener('change', (event) => {
+                    event.stopPropagation();
+                    handleTaskCompletionChange(taskId, event.target.checked);
+                });
+            }
+
 
             if (task.status === "Completed" && task.completedDate) {
                 taskModalCompletedDate.textContent = formatDisplayDateTime(task.completedDate);
