@@ -1001,9 +1001,10 @@
                     maxZoom: 24
                 }).setView([defaultLat, defaultLon], 19);
 
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                   attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA FSA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-                   maxZoom: 24
+                L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                    attribution: 'Map data &copy; <a href="https://www.google.com/maps">Google</a>',
+                    maxZoom: 22, // Google satellite often goes to very high zoom levels
+                    subdomains:['mt0','mt1','mt2','mt3'] // Helps with loading performance
                 }).addTo(dashboardMap);
                 
                 markersClusterGroup = L.markerClusterGroup(); // Initialize cluster group
@@ -1283,8 +1284,10 @@
                 const defaultZoom = dashboardMap ? dashboardMap.getZoom() : 17;
 
                 taskLocationPickerMap = L.map('taskLocationPickerMap').setView(defaultCenter, defaultZoom);
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: 'Tiles &copy; Esri'
+                L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                    attribution: 'Map data &copy; <a href="https://www.google.com/maps">Google</a>',
+                    maxZoom: 22, // Google satellite often goes to very high zoom levels
+                    subdomains:['mt0','mt1','mt2','mt3'] // Helps with loading performance
                 }).addTo(taskLocationPickerMap);
             } else {
                  taskLocationPickerMap.invalidateSize();
