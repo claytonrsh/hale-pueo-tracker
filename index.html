@@ -327,10 +327,10 @@
 
         <div class="mb-6 border-b border-gray-300">
             <nav class="flex -mb-px" aria-label="Tabs">
-                <button data-tab="dashboardTab" class="tab-button active" id="dashboardTabButton">Dashboard</button>
-                <button data-tab="recentActivityTab" class="tab-button" id="recentActivityTabButton">Recent Activity</button>
-                <button data-tab="tasksTab" class="tab-button" id="tasksTabButton">Task Priority</button>
-                <button data-tab="aboutTab" class="tab-button" id="aboutTabButton">About Hale Pueo</button>
+                <button onclick="openTab(event, 'dashboardTab')" class="tab-button active" id="dashboardTabButton">Dashboard</button>
+                <button onclick="openTab(event, 'recentActivityTab')" class="tab-button" id="recentActivityTabButton">Recent Activity</button>
+                <button onclick="openTab(event, 'tasksTab')" class="tab-button" id="tasksTabButton">Task Priority</button>
+                <button onclick="openTab(event, 'aboutTab')" class="tab-button" id="aboutTabButton">About Hale Pueo</button>
             </nav>
         </div>
 
@@ -382,7 +382,7 @@
                     <img src="https://i.imgur.com/YsWPqY9.jpeg"
                          alt="Hale Pueo Farm Layout"
                          class="rounded-lg shadow-md cursor-pointer w-full md:w-2/3 lg:w-1/2 mx-auto"
-                         id="aboutPageMapImage">
+                         onclick="openImageZoomModal('https://i.imgur.com/YsWPqY9.jpeg')">
                 </figure>
                 <p class="mt-4">Welcome to Hale Pueo, our little slice of paradise in Hāna, Maui!</p>
                 <p>This homestead tracker is a digital companion to our efforts in cultivating a sustainable and productive 3-acre farm. We are home to a variety of fruit trees, a lively flock of chickens, and happy ducks enjoying the tropical environment.</p>
@@ -411,17 +411,11 @@
 
         <div id="tasksTab" class="tab-content">
             <h2 class="text-3xl font-semibold text-gray-800 mb-4">Task Priority</h2>
-            <div class="mb-4 space-y-3 md:space-y-0 md:flex md:items-center md:justify-between">
+            <div class="mb-4">
                 <label for="showCompletedTasksToggle" class="inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="showCompletedTasksToggle" class="form-input rounded h-5 w-5 text-green-600 focus:ring-green-500">
+                    <input type="checkbox" id="showCompletedTasksToggle" class="form-input rounded h-5 w-5 text-green-600 focus:ring-green-500" onchange="populateTasksDisplay()">
                     <span class="ml-2 text-gray-700">Show Completed Tasks</span>
                 </label>
-                <div class="flex items-center gap-2">
-                    <label for="taskAssigneeFilter" class="text-sm font-medium text-gray-700">Filter by Assignee:</label>
-                    <select id="taskAssigneeFilter" class="form-select rounded-md p-2 border-gray-300">
-                        <option value="">All Assignees</option>
-                    </select>
-                </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="md:col-span-2">
@@ -442,10 +436,6 @@
                             <textarea id="newTaskDescription" rows="3" class="form-textarea notes-textarea mt-1 block w-full rounded-md p-2" placeholder="Details about the task..."></textarea>
                         </div>
                         <div>
-                            <label for="newTaskAssignedTo" class="block text-sm font-medium text-gray-700">Assigned To (Optional):</label>
-                            <input type="text" id="newTaskAssignedTo" class="form-input mt-1 block w-full rounded-md p-2" placeholder="e.g., John D.">
-                        </div>
-                        <div>
                             <label for="newTaskDueDate" class="block text-sm font-medium text-gray-700">Due Date (Optional):</label>
                             <input type="date" id="newTaskDueDate" class="form-date mt-1 block w-full rounded-md p-2">
                         </div>
@@ -463,7 +453,7 @@
                             <label class="block text-sm font-medium text-gray-700">Task Location (Optional):</label>
                             <input type="hidden" id="newTaskLat">
                             <input type="hidden" id="newTaskLon">
-                            <button type="button" id="setTaskLocationButton" class="text-sm text-blue-600 hover:underline mt-1">Set Task Location on Map</button>
+                            <button type="button" onclick="openTaskLocationPickerModal()" class="text-sm text-blue-600 hover:underline mt-1">Set Task Location on Map</button>
                             <span id="taskLocationCoordsDisplay" class="text-xs text-gray-500 ml-2 block mt-1">No location set</span>
                         </div>
                         <div>
@@ -474,7 +464,7 @@
                                 <option value="Low">Low</option>
                             </select>
                         </div>
-                        <button id="saveTaskButton" class="action-button w-full">Add Task to Sheet</button>
+                        <button id="saveTaskButton" onclick="saveNewTask()" class="action-button w-full">Add Task to Sheet</button>
                     </div>
                 </div>
             </div>
@@ -485,7 +475,7 @@
 
     <div id="assetInfoModal" class="modal-overlay">
         <div class="modal-content">
-            <button id="closeAssetModalButton" class="modal-close-button">&times;</button>
+            <button onclick="closeAssetModal()" class="modal-close-button">×</button>
             <h3 id="modalAssetName" class="text-2xl font-semibold text-gray-700 mb-4">Asset Details</h3>
             
             <div id="modalStaticAssetInfo" class="mb-4 p-4 border border-gray-200 rounded-md bg-white">
@@ -503,7 +493,7 @@
             <hr class="my-6">
 
             <div id="modalActivityTrackerSection">
-                <h4 class="font-semibold text-lg mb-3">Full Activity Log</h4>
+                <h4 class="font-semibold text-lg mb-3">Full Activity Log (Persists Across Sessions)</h4>
                 <div id="modalLatestActivityDisplay" class="mb-4 p-3 border border-dashed border-gray-300 rounded-md bg-gray-100 max-h-48 overflow-y-auto">
                     <p class="text-center text-gray-500">Loading activities or no activities found for this asset.</p>
                 </div>
@@ -527,32 +517,32 @@
                                 hover:file:bg-green-100" accept="image/*">
                         <img id="modalNewActivityImagePreview" src="#" alt="Image Preview" class="mt-2 hidden" style="max-height: 150px;"/>
                     </div>
-                    <button id="saveModalActivityButton" class="action-button w-full">Save Activity to Sheet</button>
+                    <button id="saveModalActivityButton" onclick="saveModalActivity()" class="action-button w-full">Save Activity to Sheet</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="imageZoomModal" class="modal-overlay">
-        <div class="modal-content p-2 relative">
-            <button id="closeImageZoomModalButton" class="modal-close-button text-white hover:text-gray-300" style="top:0; right: 5px; font-size:2.5rem;">&times;</button>
+    <div id="imageZoomModal" class="modal-overlay" onclick="closeImageZoomModal()">
+        <div class="modal-content p-2 relative" onclick="event.stopPropagation()">
+            <button onclick="closeImageZoomModal()" class="modal-close-button text-white hover:text-gray-300" style="top:0; right: 5px; font-size:2.5rem;">×</button>
             <img id="zoomedImage" src="" alt="Zoomed Image" class="max-w-full max-h-full">
         </div>
     </div>
     
     <div id="taskLocationModal" class="modal-overlay">
         <div class="modal-content">
-            <button id="closeTaskLocationPickerModalButton" class="modal-close-button">×</button>
+            <button onclick="closeTaskLocationPickerModal()" class="modal-close-button">×</button>
             <h3 class="text-xl font-semibold text-gray-700 mb-3">Pick Task Location</h3>
             <div id="taskLocationPickerMap"></div>
             <p class="text-xs text-gray-500 mt-2">Click on the map to select a location for the task.</p>
-            <button id="confirmTaskLocationButton" class="action-button mt-3 bg-green-600 hover:bg-green-700">Confirm Location</button>
+            <button onclick="confirmTaskLocation()" class="action-button mt-3 bg-green-600 hover:bg-green-700">Confirm Location</button>
         </div>
     </div>
 
     <div id="taskActivityModal" class="modal-overlay">
         <div class="modal-content">
-            <button id="closeTaskActivityModalButton" class="modal-close-button">×</button>
+            <button onclick="closeTaskActivityModal()" class="modal-close-button">×</button>
             <h3 id="taskModalTaskName" class="text-2xl font-semibold text-gray-700 mb-1">Task Details</h3>
             <p class="text-sm text-gray-500 mb-3">ID: <span id="taskModalTaskId"></span></p>
             
@@ -600,7 +590,7 @@
                                 hover:file:bg-green-100" accept="image/*">
                         <img id="taskModalNewActivityImagePreview" src="#" alt="Image Preview" class="mt-2 hidden" style="max-height: 150px;"/>
                     </div>
-                    <button id="saveTaskSpecificActivityButton" class="action-button w-full">Save Activity to Task</button>
+                    <button id="saveTaskSpecificActivityButton" onclick="saveTaskActivity()" class="action-button w-full">Save Activity to Task</button>
                 </div>
             </div>
         </div>
@@ -611,7 +601,1564 @@
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="app.js" defer></script>
+    <script>
+        // --- Configuration ---
+        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXl17fkaqYmdxU7pJ00Z4WWkglWndAJFhyKDz-axqR2u4zeUQOfgFR94eqp5ZipCwGZ3Ycm1eBu7Tl/pub?gid=0&single=true&output=csv';
+        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzi-T94NZTtkG94thYGEwwspzOxmP9iNWRccJ1xKmeEAcfwTx9fn5U3D6jWxOaEG50I/exec';
+
+        // --- Global Variables ---
+        let farmData = {};
+        let assetActivities = {};
+        let allActivitiesList = [];
+        let taskListData = [];
+        let selectedAssetIdForModal = null;
+        let currentOpenTaskId = null;
+        let newActivitySelectedFile = null;
+        let newTaskActivitySelectedFile = null;
+        let dashboardMap = null;
+        let markersClusterGroup = null;
+        let taskLocationPickerMap = null;
+        let temporaryTaskMarker = null;
+        let assetTypeVisibility = {};
+        let recentActivityCurrentPage = 1;
+        const activitiesPerPage = 10;
+
+
+        // --- DOM Elements (will be cached) ---
+        let messageBox, successMessageText, loadingBox, errorBox, errorMessageText,
+            activityMessageBox, activityMessageText, taskMessageBox, taskMessageText,
+            farmMapViewport,
+            modalAssetName, modalStaticAssetId,
+            modalStaticAssetName, modalStaticAssetType, modalStaticAssetDescription,
+            modalStaticAssetLastActivityDate, modalStaticAssetImageContainer,
+            modalStaticAssetLatestNotes, modalLatestActivityDisplay,
+            modalNewActivityDateTimeInput, modalNewActivityNoteInput,
+            modalNewActivityImageFileInput, modalNewActivityImagePreview, saveModalActivityButton,
+            recentActivityContainer, recentActivityPageInfo, prevRecentActivityPage, nextRecentActivityPage,
+            taskListContainer, newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput,
+            newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput,
+            showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage,
+            assetInfoModal, taskLocationModal, taskLocationPickerMapElement,
+            newTaskLatInput, newTaskLonInput, taskLocationCoordsDisplay,
+            assetTypeFilterButtonsContainer,
+            taskActivityModal, taskModalTaskName, taskModalTaskId, taskModalDescription, taskModalDueDate,
+            taskModalPriority, taskModalRelatedAsset, taskModalLocation, taskModalStatus,
+            taskModalCreatedDate, taskModalCompletedDateContainer, taskModalCompletedDate,
+            taskSpecificActivityLogDisplay, taskModalNewActivityDateTimeInput,
+            taskModalNewActivityNoteInput, taskModalNewActivityImageFileInput,
+            taskModalNewActivityImagePreview, saveTaskSpecificActivityButton,
+            taskModalCompleteToggle;
+
+
+        // --- FUNCTION DEFINITIONS ---
+        function cacheDOMElements() {
+            console.log("Attempting to cache DOM elements...");
+            messageBox = document.getElementById('messageBox');
+            successMessageText = document.getElementById('successMessageText');
+            loadingBox = document.getElementById('loadingBox');
+            errorBox = document.getElementById('errorBox');
+            errorMessageText = document.getElementById('errorMessageText');
+            activityMessageBox = document.getElementById('activityMessageBox');
+            activityMessageText = document.getElementById('activityMessageText');
+            taskMessageBox = document.getElementById('taskMessageBox');
+            taskMessageText = taskMessageBox ? taskMessageBox.querySelector('span') : null;
+
+            farmMapViewport = document.getElementById('farmMapViewport');
+            
+            modalAssetName = document.getElementById('modalAssetName');
+            modalStaticAssetId = document.getElementById('modalStaticAssetId');
+            modalStaticAssetName = document.getElementById('modalStaticAssetName');
+            modalStaticAssetType = document.getElementById('modalStaticAssetType');
+            modalStaticAssetDescription = document.getElementById('modalStaticAssetDescription');
+            modalStaticAssetLastActivityDate = document.getElementById('modalStaticAssetLastActivityDate');
+            modalStaticAssetImageContainer = document.getElementById('modalStaticAssetImageContainer');
+            modalStaticAssetLatestNotes = document.getElementById('modalStaticAssetLatestNotes');
+            modalLatestActivityDisplay = document.getElementById('modalLatestActivityDisplay');
+            modalNewActivityDateTimeInput = document.getElementById('modalNewActivityDateTime');
+            modalNewActivityNoteInput = document.getElementById('modalNewActivityNote');
+            modalNewActivityImageFileInput = document.getElementById('modalNewActivityImageFile');
+            modalNewActivityImagePreview = document.getElementById('modalNewActivityImagePreview');
+            saveModalActivityButton = document.getElementById('saveModalActivityButton');
+
+            recentActivityContainer = document.getElementById('recentActivityContainer');
+            recentActivityPageInfo = document.getElementById('recentActivityPageInfo');
+            prevRecentActivityPage = document.getElementById('prevRecentActivityPage');
+            nextRecentActivityPage = document.getElementById('nextRecentActivityPage');
+
+
+            taskListContainer = document.getElementById('taskListContainer');
+            newTaskNameInput = document.getElementById('newTaskName');
+            newTaskDescriptionInput = document.getElementById('newTaskDescription');
+            newTaskDueDateInput = document.getElementById('newTaskDueDate');
+            newTaskAssetIdSelect = document.getElementById('newTaskAssetId');
+            newTaskMapZoneInput = document.getElementById('newTaskMapZone');
+            newTaskPriorityInput = document.getElementById('newTaskPriority');
+            showCompletedTasksToggle = document.getElementById('showCompletedTasksToggle');
+            saveTaskButton = document.getElementById('saveTaskButton');
+
+            imageZoomModal = document.getElementById('imageZoomModal');
+            zoomedImage = document.getElementById('zoomedImage');
+            assetInfoModal = document.getElementById('assetInfoModal');
+            taskLocationModal = document.getElementById('taskLocationModal');
+            taskLocationPickerMapElement = document.getElementById('taskLocationPickerMap');
+            newTaskLatInput = document.getElementById('newTaskLat');
+            newTaskLonInput = document.getElementById('newTaskLon');
+            taskLocationCoordsDisplay = document.getElementById('taskLocationCoordsDisplay');
+
+            assetTypeFilterButtonsContainer = document.getElementById('assetTypeFilterButtonsContainer');
+
+            taskActivityModal = document.getElementById('taskActivityModal');
+            taskModalTaskName = document.getElementById('taskModalTaskName');
+            taskModalTaskId = document.getElementById('taskModalTaskId');
+            taskModalDescription = document.getElementById('taskModalDescription');
+            taskModalDueDate = document.getElementById('taskModalDueDate');
+            taskModalPriority = document.getElementById('taskModalPriority');
+            taskModalRelatedAsset = document.getElementById('taskModalRelatedAsset');
+            taskModalLocation = document.getElementById('taskModalLocation');
+            taskModalStatus = document.getElementById('taskModalStatus');
+            taskModalCreatedDate = document.getElementById('taskModalCreatedDate');
+            taskModalCompletedDateContainer = document.getElementById('taskModalCompletedDateContainer');
+            taskModalCompletedDate = document.getElementById('taskModalCompletedDate');
+            taskSpecificActivityLogDisplay = document.getElementById('taskSpecificActivityLogDisplay');
+            taskModalNewActivityDateTimeInput = document.getElementById('taskModalNewActivityDateTime');
+            taskModalNewActivityNoteInput = document.getElementById('taskModalNewActivityNote');
+            taskModalNewActivityImageFileInput = document.getElementById('taskModalNewActivityImageFile');
+            taskModalNewActivityImagePreview = document.getElementById('taskModalNewActivityImagePreview');
+            saveTaskSpecificActivityButton = document.getElementById('saveTaskSpecificActivityButton');
+            taskModalCompleteToggle = document.getElementById('taskModalCompleteToggle');
+            
+            const essentialElements = { messageBox, successMessageText, loadingBox, errorBox, errorMessageText, activityMessageBox, activityMessageText, farmMapViewport, modalAssetName, modalStaticAssetId, modalStaticAssetName, modalStaticAssetType, modalStaticAssetDescription, modalStaticAssetLastActivityDate, modalStaticAssetImageContainer, modalStaticAssetLatestNotes, modalLatestActivityDisplay, modalNewActivityDateTimeInput, modalNewActivityNoteInput, modalNewActivityImageFileInput, modalNewActivityImagePreview, saveModalActivityButton, recentActivityContainer, taskListContainer, newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput, newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput, showCompletedTasksToggle, saveTaskButton, imageZoomModal, zoomedImage, assetInfoModal, taskLocationModal, taskLocationPickerMapElement, newTaskLatInput, newTaskLonInput, taskLocationCoordsDisplay, assetTypeFilterButtonsContainer, taskActivityModal, taskModalTaskName, taskModalTaskId, taskModalDescription, taskModalDueDate, taskModalPriority, taskModalRelatedAsset, taskModalLocation, taskModalStatus, taskModalCreatedDate, taskModalCompletedDateContainer, taskModalCompletedDate, taskSpecificActivityLogDisplay, taskModalNewActivityDateTimeInput, taskModalNewActivityNoteInput, taskModalNewActivityImageFileInput, taskModalNewActivityImagePreview, saveTaskSpecificActivityButton, recentActivityPageInfo, prevRecentActivityPage, nextRecentActivityPage, taskModalCompleteToggle };
+            for (const key in essentialElements) {
+                if (!essentialElements[key]) {
+                    console.error(`CRITICAL CACHE ERROR: Element variable '${key}' is null. Expected ID: ${key}`);
+                }
+            }
+            console.log("DOM element caching complete.");
+        }
+
+        function formatDateTimeForInput(isoString) {
+            if (!isoString) return '';
+            try {
+                const date = new Date(isoString);
+                const timezoneOffset = date.getTimezoneOffset() * 60000;
+                const localISOTime = new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
+                return localISOTime;
+            } catch (e) {
+                console.warn("Error formatting date for input:", isoString, e);
+                return '';
+            }
+        }
+        
+        function formatDisplayDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                return new Date(dateString).toLocaleString();
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        function showLoading(isLoading, message = "Loading Data...") {
+            if (!loadingBox) { console.error("loadingBox not found for showLoading"); return; }
+            const loaderDiv = loadingBox.querySelector('.flex');
+            if (loaderDiv) {
+                 loaderDiv.innerHTML = `<div class="loader"></div><strong class="font-bold">${message.split('...')[0]}...</strong><span class="block sm:inline">${message.split('...')[1] || ''}</span>`;
+            } else {
+                loadingBox.innerHTML = `<div class="flex items-center justify-center"><div class="loader"></div><strong class="font-bold">${message.split('...')[0]}...</strong><span class="block sm:inline">${message.split('...')[1] || ''}</span></div>`;
+            }
+            loadingBox.classList.toggle('hidden', !isLoading);
+        }
+
+        function showUserMessage(element, textElement, message, isSuccess = true, duration = 5000) {
+            if (!element || !textElement) {
+                console.error("showUserMessage: Target element or textElement is null", element, textElement);
+                return;
+            }
+            element.classList.remove('hidden', 'bg-green-100', 'border-green-400', 'text-green-700', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-blue-100', 'border-blue-400', 'text-blue-700');
+            if (isSuccess === true) {
+                 element.classList.add('bg-green-100', 'border-green-400', 'text-green-700');
+                 if (element.querySelector('strong')) element.querySelector('strong').textContent = 'Success!';
+            } else if (isSuccess === false) {
+                element.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+                if (element.querySelector('strong')) element.querySelector('strong').textContent = 'Error!';
+            } else {
+                 element.classList.add('bg-blue-100', 'border-blue-400', 'text-blue-700');
+            }
+            textElement.textContent = message;
+            setTimeout(() => { element.classList.add('hidden'); }, duration);
+        }
+        
+        function getErrorMessage(error) {
+            let errorDetail = "An unknown error occurred. Check console.";
+            if (error) {
+                if (error.message && error.message.trim() !== '' && error.message !== "[object Object]") {
+                    errorDetail = error.message;
+                } else if (typeof error.toString === 'function') {
+                    const errStr = error.toString();
+                    if (errStr.trim() !== '' && errStr !== "[object Object]") {
+                        errorDetail = errStr;
+                    } else {
+                        errorDetail = "Error object found, see console for more details.";
+                    }
+                } else if (typeof error === 'string' && error.trim() !== '') {
+                    errorDetail = error;
+                }
+            }
+            return errorDetail;
+        }
+
+        function openTab(event, tabName) {
+            let i, tabcontent, tabbuttons;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
+            }
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].classList.remove("active");
+            }
+            const currentTab = document.getElementById(tabName);
+            if (currentTab) {
+                currentTab.style.display = "block";
+                currentTab.classList.add("active");
+            }
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add("active");
+            }
+
+            if (tabName === 'dashboardTab' && dashboardMap) {
+                 setTimeout(() => dashboardMap.invalidateSize(), 0);
+            }
+            if (tabName === 'tasksTab' && taskLocationPickerMap && taskLocationModal.classList.contains('active')) {
+                setTimeout(() => taskLocationPickerMap.invalidateSize(), 0);
+            }
+        }
+
+        function csvToJSON(csvText) {
+            const trimmedCsvText = csvText.trim();
+            if (!trimmedCsvText) { return {}; }
+            const lines = trimmedCsvText.split('\n').map(line => line.trim()).filter(line => line);
+            if (lines.length < 2) { return {}; }
+            const headers = lines[0].split(',').map(header => header.trim().replace(/^"|"$/g, ''));
+            const jsonData = {};
+            for (let i = 1; i < lines.length; i++) {
+                const values = [];
+                let currentVal = '';
+                let inQuotes = false;
+                for (const char of lines[i]) {
+                    if (char === '"' && (lines[i][lines[i].indexOf(char) -1] !== '\\') ) {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(currentVal.trim().replace(/^"|"$/g, ''));
+                        currentVal = '';
+                    } else {
+                        currentVal += char;
+                    }
+                }
+                values.push(currentVal.trim().replace(/^"|"$/g, ''));
+                while (values.length < headers.length) { values.push('');}
+                const entry = {};
+                let assetId = '';
+                for (let j = 0; j < headers.length; j++) {
+                    const header = headers[j];
+                    const value = values[j] || '';
+                    if (header === 'assetId') assetId = value;
+                    entry[header] = value;
+                }
+                if (assetId) { jsonData[assetId] = entry; }
+            }
+            return jsonData;
+        }
+        
+        async function loadInitialData() {
+            console.log("loadInitialData started");
+            showLoading(true, "Loading initial asset data...");
+            try {
+                if (GOOGLE_SHEET_CSV_URL === 'YOUR_GOOGLE_SHEET_PUBLISHED_CSV_URL_HERE' || !GOOGLE_SHEET_CSV_URL) {
+                    throw new Error("CRITICAL: Google Sheet URL for asset list is not configured.");
+                }
+                const farmResponse = await fetch(GOOGLE_SHEET_CSV_URL);
+                if (!farmResponse.ok) {
+                    throw new Error(`HTTP error fetching asset list! Status: ${farmResponse.status}.`);
+                }
+                const farmCsvText = await farmResponse.text();
+                farmData = csvToJSON(farmCsvText);
+                if (Object.keys(farmData).length === 0 && farmCsvText.trim() !== '') {
+                   throw new Error("No asset data parsed. Check Asset Sheet CSV format/headers (assetId, name, type, description, lat, lon, etc).");
+                } else if (Object.keys(farmData).length === 0 && farmCsvText.trim() === '') {
+                    throw new Error("Asset Sheet CSV data empty.");
+                }
+                console.log("Farm data loaded:", Object.keys(farmData).length, "assets");
+                showUserMessage(messageBox, successMessageText, "Asset list loaded.", true, 3000);
+                
+                populateAssetTypeFilterButtons();
+                initializeDashboardMap();
+                
+                // Load tasks first, then activities, then populate UI that depends on both
+                await loadTasksFromSheet();
+                await loadActivitiesFromSheet();
+                
+                populateTaskAssetIdDropdown();
+                populateLeafletMapMarkers();
+                populateRecentActivityLog();
+                
+                console.log("loadInitialData finished successfully");
+                
+            } catch (error) {
+                console.error("Load initial data error:", error);
+                showUserMessage(errorBox, errorMessageText, `Failed to load initial data: ${getErrorMessage(error)}`, false);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function loadActivitiesFromSheet() {
+             console.log("loadActivitiesFromSheet started");
+             if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
+                return;
+            }
+            try {
+                const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?action=getActivities`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error fetching activities! Status: ${response.status}.`);
+                }
+                const data = await response.json();
+                
+                if (data.status === "success" && data.activities) {
+                    allActivitiesList = data.activities;
+                    assetActivities = {};
+
+                    allActivitiesList.forEach(activity => {
+                        if (activity.assetId) {
+                            if (!assetActivities[activity.assetId]) {
+                                assetActivities[activity.assetId] = [];
+                            }
+                            if (!assetActivities[activity.assetId].find(a => a.activityId === activity.activityId)) {
+                                assetActivities[activity.assetId].push(activity);
+                            }
+                        }
+                    });
+
+                    for (const assetIdKey in assetActivities) {
+                        assetActivities[assetIdKey].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
+                    }
+                    console.log("Activities loaded and processed. Count:", allActivitiesList.length);
+                    showUserMessage(messageBox, successMessageText, "Activities loaded.", true, 3000);
+                    // populateRecentActivityLog(); // Call moved to loadInitialData
+                } else {
+                    throw new Error(data.message || "Failed to parse activities.");
+                }
+            } catch (error) {
+                console.error("Load activities error:", error);
+                showUserMessage(errorBox, errorMessageText, `Failed to load activities: ${getErrorMessage(error)}`, false);
+            }
+        }
+
+        async function loadTasksFromSheet() {
+            console.log("loadTasksFromSheet started");
+             if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
+                if(taskListContainer) taskListContainer.innerHTML = `<p class="text-gray-500">Task loading not configured.</p>`;
+                return;
+            }
+            try {
+                const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?action=getTasks`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error fetching tasks! Status: ${response.status}.`);
+                }
+                const data = await response.json();
+                if (data.status === "success" && data.tasks) {
+                    taskListData = data.tasks;
+                    console.log("Tasks loaded and processed. Count:", taskListData.length);
+                    showUserMessage(messageBox, successMessageText, "Tasks loaded successfully.", true, 3000);
+                    populateTasksDisplay();
+                    // populateLeafletMapMarkers(); // Call moved to loadInitialData
+                } else {
+                    throw new Error(data.message || "Failed to parse tasks.");
+                }
+            } catch (error) {
+                console.error("Load tasks error:", error);
+                showUserMessage(errorBox, errorMessageText, `Failed to load tasks: ${getErrorMessage(error)}`, false);
+                if(taskListContainer) taskListContainer.innerHTML = `<p class="text-red-500">Error loading tasks.</p>`;
+            }
+        }
+
+        function initializeDashboardMap() {
+            if (dashboardMap) {
+                try { dashboardMap.invalidateSize(); } catch(e) { console.warn("Could not invalidate map size on re-init attempt", e); }
+                return;
+            }
+            
+            const mapElement = document.getElementById('farmMapViewport');
+            if (!mapElement) {
+                console.error("Critical: farmMapViewport element not found for Leaflet initialization!");
+                showUserMessage(errorBox, errorMessageText, "Map container not found. Dashboard cannot load.", false);
+                return;
+            }
+            
+            const defaultLat = 20.74065901504538;
+            const defaultLon = -155.9872504358726;
+
+            try {
+                dashboardMap = L.map('farmMapViewport', {
+                    maxZoom: 24
+                }).setView([defaultLat, defaultLon], 19);
+
+                L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                    attribution: 'Map data © <a href="https://www.google.com/permissions/geoguidelines.html">Google</a>',
+                    maxZoom: 22,
+                    subdomains:['mt0','mt1','mt2','mt3']
+                }).addTo(dashboardMap);
+                
+                markersClusterGroup = L.markerClusterGroup();
+                dashboardMap.addLayer(markersClusterGroup);
+
+            } catch (mapError) {
+                console.error("Error initializing Leaflet map:", mapError);
+                showUserMessage(errorBox, errorMessageText, `Error initializing map: ${getErrorMessage(mapError)}`, false);
+            }
+        }
+        
+        function populateLeafletMapMarkers() {
+            console.log("Populating map markers. Current visibility state:", JSON.stringify(assetTypeVisibility));
+            if (!dashboardMap || !markersClusterGroup) {
+                console.warn("populateLeafletMapMarkers called but dashboardMap or markersClusterGroup is not initialized.");
+                return;
+            }
+            
+            markersClusterGroup.clearLayers();
+
+            let markersAddedCount = 0;
+
+            // Populate Asset Markers
+            if (Object.keys(farmData).length > 0) {
+                Object.keys(farmData).forEach(assetId => {
+                    const asset = farmData[assetId];
+                    const lat = parseFloat(asset.lat);
+                    const lon = parseFloat(asset.lon);
+                    const assetTypeForFilter = asset.type || 'Other';
+
+                    if (assetTypeVisibility[assetTypeForFilter] === true) {
+                        if (!isNaN(lat) && !isNaN(lon)) {
+                            let markerLabel = (asset.type ? asset.type.substring(0,1) : assetId.substring(0,1)).toUpperCase();
+                            let markerClassName = 'leaflet-div-icon other-marker';
+                            if (asset.type) {
+                                const assetTypeLower = asset.type.toLowerCase();
+                                if (assetTypeLower.includes('tree')) { markerClassName = 'leaflet-div-icon tree-marker'; }
+                                else if (assetTypeLower.includes('plant') || assetTypeLower.includes('vegetable')) { markerClassName = 'leaflet-div-icon plant-marker'; }
+                                else if (assetTypeLower.includes('poultry')) { markerClassName = 'leaflet-div-icon poultry-marker'; }
+                                else if (assetTypeLower.includes('structure')) { markerClassName = 'leaflet-div-icon structure-marker';}
+                            }
+
+                            const divIcon = L.divIcon({
+                                className: markerClassName,
+                                html: `<span>${markerLabel}</span>`,
+                                iconSize: [28, 28],
+                                iconAnchor: [14, 14]
+                            });
+
+                            const marker = L.marker([lat, lon], { icon: divIcon });
+                            
+                            let popupContent = `<b>${asset.name || assetId}</b><br>${asset.type || 'N/A'}`;
+                            let imageUrlToDisplay = asset.imageUrl || '';
+                            let notesToDisplay = asset.description || 'No description.';
+
+                            if (assetActivities[assetId] && assetActivities[assetId].length > 0) {
+                                const latestActivity = assetActivities[assetId][assetActivities[assetId].length - 1];
+                                if (latestActivity.activityImageUrl) {
+                                    imageUrlToDisplay = latestActivity.activityImageUrl;
+                                }
+                                if (latestActivity.noteText) {
+                                    notesToDisplay = latestActivity.noteText;
+                                }
+                            }
+
+                            if (imageUrlToDisplay) {
+                                popupContent += `<br><img src="${imageUrlToDisplay}" alt="Latest image for ${asset.name || assetId}" class="popup-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><p class="text-red-500 text-xs hidden">Image load failed.</p>`;
+                            }
+                            popupContent += `<div class="popup-notes">${notesToDisplay.length > 100 ? notesToDisplay.substring(0, 100) + '...' : notesToDisplay}</div>`;
+                            popupContent += `<button class="text-blue-500 hover:underline text-xs p-1 mt-1 w-full text-center" onclick="openAssetModal('${assetId}')">View Full Details & Log</button>`;
+
+                            marker.bindPopup(popupContent, {maxWidth: 250});
+                            markersClusterGroup.addLayer(marker);
+                            markersAddedCount++;
+                        }
+                    }
+                });
+            }
+
+            // Populate Task Markers
+            if (assetTypeVisibility['Tasks'] === true && taskListData && taskListData.length > 0) {
+                console.log("Attempting to populate task markers. Task visibility is true. Task count:", taskListData.length);
+                taskListData.forEach(task => {
+                    if (task.status === "Completed") return;
+
+                    let taskLat, taskLon;
+                    if (task.taskLat && task.taskLon && !isNaN(parseFloat(task.taskLat)) && !isNaN(parseFloat(task.taskLon))) {
+                        taskLat = parseFloat(task.taskLat);
+                        taskLon = parseFloat(task.taskLon);
+                    } else if (task.assetId && farmData[task.assetId] && !isNaN(parseFloat(farmData[task.assetId].lat)) && !isNaN(parseFloat(farmData[task.assetId].lon))) {
+                        taskLat = parseFloat(farmData[task.assetId].lat);
+                        taskLon = parseFloat(farmData[task.assetId].lon);
+                    }
+
+                    if (taskLat && taskLon) {
+                        const taskIcon = L.divIcon({
+                            className: 'leaflet-div-icon task-map-marker',
+                            html: '<span>T</span>',
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 14]
+                        });
+                        const taskMarker = L.marker([taskLat, taskLon], { icon: taskIcon });
+                        taskMarker.bindPopup(`<b>Task: ${task.displayName}</b><br>Priority: ${task.priority}<br>${task.assetId ? `Asset: ${farmData[task.assetId]?.name || task.assetId}<br>` : ''}Due: ${task.dueDate ? formatDisplayDateTime(task.dueDate) : 'N/A'}<br><button class="text-blue-500 hover:underline text-xs p-1 mt-1 w-full text-center" onclick="openTaskActivityModal('${task.taskId}')">View Task & Log Activity</button>`);
+                        markersClusterGroup.addLayer(taskMarker);
+                        markersAddedCount++;
+                    }
+                });
+            } else {
+                 console.log("Skipping task markers. Task visibility:", assetTypeVisibility['Tasks'], "Task list length:", taskListData ? taskListData.length : 'undefined');
+            }
+
+            if (markersAddedCount === 0 && (Object.keys(farmData).length > 0 || (taskListData && taskListData.length > 0)) ) {
+                console.warn("No markers added to map. Check data and/or filters.");
+            }
+        }
+
+        function populateAssetTypeFilterButtons() {
+            if (!assetTypeFilterButtonsContainer ) return;
+            assetTypeFilterButtonsContainer.innerHTML = '';
+            assetTypeVisibility = {};
+
+            const types = new Set();
+            Object.values(farmData).forEach(asset => {
+                types.add(asset.type || 'Other');
+            });
+            types.add('Tasks');
+            types.add('All');
+
+            Array.from(types).sort().forEach(type => {
+                assetTypeVisibility[type] = true;
+                const button = document.createElement('button');
+                button.textContent = type;
+                button.className = 'filter-button active';
+                button.dataset.type = type;
+
+                button.onclick = () => {
+                    if (type === 'All') {
+                        const activateAll = !assetTypeVisibility['All'];
+                         Object.keys(assetTypeVisibility).forEach(key => assetTypeVisibility[key] = activateAll);
+                    } else {
+                        assetTypeVisibility[type] = !assetTypeVisibility[type];
+                        const allIndividualTypesActive = Object.keys(assetTypeVisibility)
+                            .filter(k => k !== 'All')
+                            .every(key => assetTypeVisibility[key]);
+                        assetTypeVisibility['All'] = allIndividualTypesActive;
+                    }
+                    updateFilterButtonStates();
+                    populateLeafletMapMarkers();
+                };
+                assetTypeFilterButtonsContainer.appendChild(button);
+            });
+            updateFilterButtonStates();
+        }
+
+        function updateFilterButtonStates() {
+            const buttons = assetTypeFilterButtonsContainer.querySelectorAll('.filter-button');
+            buttons.forEach(button => {
+                const type = button.dataset.type;
+                if (assetTypeVisibility[type]) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+        }
+
+
+        function populateRecentActivityLog() {
+            if (!recentActivityContainer) {
+                console.error("Recent activity container not found in DOM.");
+                return;
+            }
+            recentActivityContainer.innerHTML = '';
+            console.log("Populating recent activity. Total activities available:", allActivitiesList.length, "Current task list length:", taskListData.length);
+
+
+            if (allActivitiesList.length === 0) {
+                recentActivityContainer.innerHTML = '<p class="text-gray-500">No activities logged yet.</p>';
+                updateRecentActivityPaginationControls(0);
+                return;
+            }
+
+            const sortedActivities = [...allActivitiesList].sort((a, b) =>
+                new Date(b.userActivityTimestamp || b.timestamp) - new Date(a.userActivityTimestamp || a.timestamp)
+            );
+            
+            const totalPages = Math.ceil(sortedActivities.length / activitiesPerPage);
+            const startIndex = (recentActivityCurrentPage - 1) * activitiesPerPage;
+            const endIndex = startIndex + activitiesPerPage;
+            const activitiesToDisplay = sortedActivities.slice(startIndex, endIndex);
+
+
+            if (activitiesToDisplay.length === 0 && recentActivityCurrentPage === 1) {
+                recentActivityContainer.innerHTML = '<p class="text-gray-500">No activities logged yet.</p>';
+            } else if (activitiesToDisplay.length === 0 && recentActivityCurrentPage > 1) {
+                 recentActivityContainer.innerHTML = '<p class="text-gray-500">No more activities to display.</p>';
+            } else {
+                activitiesToDisplay.forEach(activity => {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.className = 'recent-activity-item p-4 border rounded-md bg-gray-50 shadow-sm';
+                    
+                    const activityDateToDisplay = activity.userActivityTimestamp || activity.timestamp;
+                    let imgHTML = '';
+                    if (activity.activityImageUrl) {
+                        imgHTML = `<img src="${activity.activityImageUrl}" alt="Activity Image" class="activity-image my-2" 
+                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                   <p class="text-red-500 text-sm hidden">Image load failed for ${activity.activityImageUrl}</p>`;
+                    }
+                    
+                    let contextName = "General Activity";
+                    let contextId = activity.activityId;
+                    let contextButton = '';
+
+                    if (activity.taskId) {
+                        const relatedTask = taskListData.find(t => t.taskId === activity.taskId);
+                        contextName = relatedTask ? `Task: ${relatedTask.displayName}` : `Task ID: ${activity.taskId}`;
+                        contextId = activity.taskId;
+                        contextButton = `<button class="text-blue-500 hover:underline text-xs mt-2" onclick="openTaskActivityModal('${activity.taskId}')">View Task & Activities</button>`;
+                    } else if (activity.assetId && farmData[activity.assetId]) {
+                        contextName = farmData[activity.assetId].name || activity.assetId;
+                        contextId = activity.assetId;
+                        contextButton = `<button class="text-blue-500 hover:underline text-xs mt-2" onclick="openAssetModal('${activity.assetId}')">View Asset & Full Log</button>`;
+                    }
+
+
+                    entryDiv.innerHTML = `
+                        <h4 class="font-semibold text-md">${contextName} <span class="text-xs text-gray-400">(${contextId})</span></h4>
+                        <p class="text-xs text-gray-500 mb-1">Activity Date: ${formatDisplayDateTime(activityDateToDisplay)}</p>
+                        ${imgHTML}
+                        <p class="text-sm whitespace-pre-wrap">${activity.noteText || "No note for this activity."}</p>
+                        ${contextButton}
+                    `;
+                    recentActivityContainer.appendChild(entryDiv);
+                });
+            }
+            updateRecentActivityPaginationControls(totalPages);
+        }
+
+        function updateRecentActivityPaginationControls(totalPages) {
+            if (!recentActivityPageInfo || !prevRecentActivityPage || !nextRecentActivityPage) return;
+
+            recentActivityPageInfo.textContent = `Page ${recentActivityCurrentPage} of ${totalPages > 0 ? totalPages : 1}`;
+            prevRecentActivityPage.disabled = recentActivityCurrentPage === 1;
+            nextRecentActivityPage.disabled = recentActivityCurrentPage === totalPages || totalPages === 0;
+        }
+
+
+        function populateTaskAssetIdDropdown() {
+             if (!newTaskAssetIdSelect) {
+                console.warn("newTaskAssetIdSelect not found, cannot populate.");
+                return;
+            }
+            if (Object.keys(farmData).length === 0) {
+                console.log("Farm data not yet available for task asset dropdown.");
+                return;
+            }
+            console.log("Populating task asset ID dropdown.");
+
+
+            while (newTaskAssetIdSelect.options.length > 1) {
+                newTaskAssetIdSelect.remove(1);
+            }
+
+            Object.keys(farmData).sort((a,b) => (farmData[a].name || a).localeCompare(farmData[b].name || b) ).forEach(assetId => {
+                const asset = farmData[assetId];
+                const option = document.createElement('option');
+                option.value = asset.assetId;
+                option.textContent = `${asset.name || 'Unnamed Asset'} (${asset.assetId})`;
+                newTaskAssetIdSelect.appendChild(option);
+            });
+        }
+
+        function openTaskLocationPickerModal() {
+            if (!taskLocationModal) return;
+            taskLocationModal.classList.add('active');
+
+            if (!taskLocationPickerMap) {
+                const defaultCenter = dashboardMap ? dashboardMap.getCenter() : [20.74065901504538, -155.9872504358726];
+                const defaultZoom = dashboardMap ? dashboardMap.getZoom() : 17;
+
+                taskLocationPickerMap = L.map('taskLocationPickerMap').setView(defaultCenter, defaultZoom);
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri'
+                }).addTo(taskLocationPickerMap);
+            } else {
+                 taskLocationPickerMap.invalidateSize();
+            }
+            
+            if (temporaryTaskMarker) {
+                taskLocationPickerMap.removeLayer(temporaryTaskMarker);
+                temporaryTaskMarker = null;
+            }
+            if (newTaskLatInput.value && newTaskLonInput.value) {
+                 temporaryTaskMarker = L.marker([parseFloat(newTaskLatInput.value), parseFloat(newTaskLonInput.value)]).addTo(taskLocationPickerMap);
+                 taskLocationPickerMap.panTo([parseFloat(newTaskLatInput.value), parseFloat(newTaskLonInput.value)]);
+            }
+
+            taskLocationPickerMap.on('click', function(e) {
+                if (temporaryTaskMarker) {
+                    taskLocationPickerMap.removeLayer(temporaryTaskMarker);
+                }
+                temporaryTaskMarker = L.marker(e.latlng).addTo(taskLocationPickerMap);
+                newTaskLatInput.value = e.latlng.lat.toFixed(6);
+                newTaskLonInput.value = e.latlng.lng.toFixed(6);
+                if (taskLocationCoordsDisplay) taskLocationCoordsDisplay.textContent = `Lat: ${e.latlng.lat.toFixed(4)}, Lon: ${e.latlng.lng.toFixed(4)}`;
+            });
+        }
+
+        function closeTaskLocationPickerModal() {
+            if (taskLocationPickerMap) {
+                taskLocationPickerMap.off('click');
+            }
+            if (taskLocationModal) taskLocationModal.classList.remove('active');
+        }
+
+        function confirmTaskLocation() {
+            closeTaskLocationPickerModal();
+        }
+
+        function openAssetModal(assetId) {
+            console.log("openAssetModal called for asset ID:", assetId);
+            if (!assetInfoModal) {
+                console.error("CRITICAL: assetInfoModal element is null in openAssetModal. Cannot open modal.");
+                return;
+            }
+            selectedAssetIdForModal = assetId;
+            const asset = farmData[assetId];
+            if (!asset) {
+                showUserMessage(errorBox, errorMessageText, `Asset ${assetId} not found.`, false);
+                return;
+            }
+
+            document.querySelectorAll('.map-asset').forEach(item => item.classList.remove('selected-on-map'));
+            const mapItemEl = document.getElementById(`map-item-${assetId}`);
+            if (mapItemEl) mapItemEl.classList.add('selected-on-map');
+
+            modalAssetName.textContent = asset.name || assetId;
+            
+            modalStaticAssetId.textContent = asset.assetId || 'N/A';
+            modalStaticAssetName.textContent = asset.name || 'N/A';
+            modalStaticAssetType.textContent = asset.type || 'N/A';
+            modalStaticAssetDescription.textContent = asset.description || 'No description provided.';
+
+            let displayLastActivityDate = "No activity logged yet.";
+            let displayLatestNotes = "No recent activity notes.";
+            let displayImageUrl = asset.imageUrl || '';
+
+            if (assetActivities[selectedAssetIdForModal] && assetActivities[selectedAssetIdForModal].length > 0) {
+                const latestActivity = assetActivities[selectedAssetIdForModal][assetActivities[selectedAssetIdForModal].length - 1];
+                displayLastActivityDate = formatDisplayDateTime(latestActivity.userActivityTimestamp || latestActivity.timestamp);
+                displayLatestNotes = latestActivity.noteText || "No note for this latest activity.";
+                displayImageUrl = latestActivity.activityImageUrl ? latestActivity.activityImageUrl : (asset.imageUrl || '');
+            }
+
+            modalStaticAssetLastActivityDate.textContent = displayLastActivityDate;
+            modalStaticAssetLatestNotes.textContent = displayLatestNotes;
+            
+            modalStaticAssetImageContainer.innerHTML = '';
+            if (displayImageUrl) {
+                const img = document.createElement('img');
+                img.src = displayImageUrl;
+                img.alt = `Image for ${asset.name || assetId}`;
+                img.className = 'asset-image';
+                img.onerror = () => {
+                    modalStaticAssetImageContainer.innerHTML = `<p class="text-red-500 text-sm">Image load failed. Check URL: ${displayImageUrl}</p>`;
+                };
+                modalStaticAssetImageContainer.appendChild(img);
+            } else {
+                 modalStaticAssetImageContainer.innerHTML = `<p class="text-xs text-gray-400 italic">No image available.</p>`;
+            }
+
+            displayModalActivityLog(assetId);
+            
+            modalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
+            modalNewActivityNoteInput.value = '';
+            if (modalNewActivityImageFileInput) modalNewActivityImageFileInput.value = null;
+            if (modalNewActivityImagePreview) {
+                modalNewActivityImagePreview.src = "#";
+                modalNewActivityImagePreview.classList.add('hidden');
+            }
+            newActivitySelectedFile = null;
+
+            assetInfoModal.style.zIndex = "1005";
+            if (taskActivityModal) taskActivityModal.style.zIndex = "1000";
+            assetInfoModal.classList.add('active');
+        }
+
+        function closeAssetModal() {
+            if (assetInfoModal) {
+                assetInfoModal.classList.remove('active');
+                assetInfoModal.style.zIndex = "1000";
+            }
+            selectedAssetIdForModal = null;
+            document.querySelectorAll('.map-asset').forEach(item => item.classList.remove('selected-on-map'));
+             if (modalNewActivityImagePreview) {
+                modalNewActivityImagePreview.src = "#";
+                modalNewActivityImagePreview.classList.add('hidden');
+            }
+            newActivitySelectedFile = null;
+        }
+
+        function displayModalActivityLog(assetIdToDisplay) {
+            if (!modalLatestActivityDisplay) return;
+            modalLatestActivityDisplay.innerHTML = `<p class="text-center text-gray-500">No activities found for this asset.</p>`;
+            
+            const activitiesForAsset = allActivitiesList.filter(activity => activity.assetId === assetIdToDisplay);
+
+            if (activitiesForAsset.length > 0) {
+                modalLatestActivityDisplay.innerHTML = '';
+                activitiesForAsset.sort((a,b) => new Date(b.userActivityTimestamp || b.timestamp) - new Date(a.userActivityTimestamp || a.timestamp));
+                
+                activitiesForAsset.forEach(activity => {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.className = 'activity-log-entry';
+                    const activityDateToDisplay = activity.userActivityTimestamp || activity.timestamp;
+                    let imgHTML = '';
+                    if (activity.activityImageUrl) {
+                        imgHTML = `<img src="${activity.activityImageUrl}" alt="Activity Image" class="activity-image mb-2" 
+                                        onerror="this.alt='Img load fail'; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                   <p class="text-red-500 text-sm hidden">Failed to load: ${activity.activityImageUrl}</p>`;
+                    }
+                    entryDiv.innerHTML = `
+                        <p class="text-xs text-gray-500 mb-1">Activity Date: ${formatDisplayDateTime(activityDateToDisplay)}</p>
+                        ${imgHTML}
+                        <p class="text-sm whitespace-pre-wrap">${activity.noteText || "No note for this activity."}</p>
+                    `;
+                    modalLatestActivityDisplay.appendChild(entryDiv);
+                });
+            }
+        }
+
+        async function saveModalActivity() {
+            if (!selectedAssetIdForModal) {
+                showUserMessage(activityMessageBox, activityMessageText, "Internal error: No asset selected for modal activity.", false);
+                return;
+            }
+            if (!saveModalActivityButton) return;
+            saveModalActivityButton.disabled = true;
+            saveModalActivityButton.textContent = 'Saving...';
+            
+            const userActivityTimestamp = modalNewActivityDateTimeInput.value ? new Date(modalNewActivityDateTimeInput.value).toISOString() : new Date().toISOString();
+            const noteText = modalNewActivityNoteInput.value.trim();
+            
+            let imageData = null;
+            let imageFileName = null;
+            let imageMimeType = null;
+
+            if (newActivitySelectedFile) {
+                imageData = newActivitySelectedFile.data;
+                imageFileName = newActivitySelectedFile.name;
+                imageMimeType = newActivitySelectedFile.type;
+            }
+
+            if (!noteText && !imageData && !modalNewActivityDateTimeInput.value) {
+                showUserMessage(activityMessageBox, activityMessageText, "Please enter some activity data (date, note, or image).", null);
+                saveModalActivityButton.disabled = false;
+                saveModalActivityButton.textContent = 'Save Activity to Sheet';
+                return;
+            }
+
+            const loggingTimestamp = new Date().toISOString();
+            const activityId = `ACT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+            const activityData = {
+                dataType: "activity",
+                loggingTimestamp: loggingTimestamp,
+                userActivityTimestamp: userActivityTimestamp,
+                assetId: selectedAssetIdForModal,
+                noteText: noteText,
+                activityId: activityId,
+                imageData: imageData,
+                imageFileName: imageFileName,
+                imageMimeType: imageMimeType,
+                taskId: null
+            };
+            
+            showUserMessage(activityMessageBox, activityMessageText, "Saving activity...", null, 10000);
+
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8', },
+                    body: JSON.stringify(activityData)
+                });
+                
+                if (response.ok) {
+                    const responseText = await response.text();
+                    try {
+                        const jsonResponse = JSON.parse(responseText);
+                        if (jsonResponse.status === "success") {
+                             showUserMessage(activityMessageBox, activityMessageText, `Activity saved successfully! (ID: ${jsonResponse.activityId || activityId})`, true);
+                             if (jsonResponse.activityImageUrl) {
+                                 activityData.activityImageUrl = jsonResponse.activityImageUrl;
+                             }
+                        } else {
+                            throw new Error(jsonResponse.message || "Apps Script reported an issue saving activity.");
+                        }
+                    } catch (e) {
+                        console.warn("Activity save: Apps Script response not valid JSON, but HTTP status was OK. Assuming success.", responseText);
+                        showUserMessage(activityMessageBox, activityMessageText, "Activity sent to sheet! (Check sheet for confirmation)", true);
+                    }
+                    
+                    delete activityData.imageData;
+                    delete activityData.imageFileName;
+                    delete activityData.imageMimeType;
+
+                    allActivitiesList.push(activityData);
+                    if (activityData.assetId) {
+                        if (!assetActivities[activityData.assetId]) {
+                            assetActivities[activityData.assetId] = [];
+                        }
+                        assetActivities[activityData.assetId].push(activityData);
+                        assetActivities[activityData.assetId].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
+                    }
+
+
+                    openAssetModal(selectedAssetIdForModal);
+                    populateRecentActivityLog();
+
+                } else {
+                    const errorText = await response.text();
+                    console.error("Server response error text (Activity):", errorText);
+                    throw new Error(`Failed to save activity. Server responded with ${response.status}.`);
+                }
+            } catch (error) {
+                console.error("Full error object during saveModalActivity:", error);
+                showUserMessage(activityMessageBox, activityMessageText, `Error saving activity: ${getErrorMessage(error)}`, false);
+            } finally {
+                if (saveModalActivityButton) {
+                    saveModalActivityButton.disabled = false;
+                    saveModalActivityButton.textContent = 'Save Activity to Sheet';
+                }
+                modalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
+                modalNewActivityNoteInput.value = '';
+                if (modalNewActivityImageFileInput) modalNewActivityImageFileInput.value = null;
+                if (modalNewActivityImagePreview) {
+                    modalNewActivityImagePreview.src = "#";
+                    modalNewActivityImagePreview.classList.add('hidden');
+                }
+                newActivitySelectedFile = null;
+            }
+        }
+
+        function populateTasksDisplay() {
+            console.log("Populating tasks display. Task list data length:", taskListData ? taskListData.length : 'undefined');
+            if (!taskListContainer) {
+                console.error("Task list container not found in populateTasksDisplay.");
+                return;
+            }
+            taskListContainer.innerHTML = '';
+            
+            const showCompleted = showCompletedTasksToggle ? showCompletedTasksToggle.checked : false;
+            
+            const filteredTasks = taskListData.filter(task => {
+                if (showCompleted) {
+                    return task.status === "Completed";
+                } else {
+                    return task.status !== "Completed";
+                }
+            });
+
+            if (filteredTasks.length === 0) {
+                taskListContainer.innerHTML = `<p class="text-gray-500">${showCompleted ? 'No completed tasks found.' : 'No open tasks found.'}</p>`;
+                return;
+            }
+
+            filteredTasks.sort((a, b) => {
+                const priorityOrder = { "High": 0, "Medium": 1, "Low": 2, "": 3 };
+                if (priorityOrder[a.priority || ""] !== priorityOrder[b.priority || ""]) {
+                    return priorityOrder[a.priority || ""] - priorityOrder[b.priority || ""];
+                }
+                const dateA = a.dueDate ? new Date(a.dueDate) : (a.status === "Completed" ? new Date(0) : new Date(8640000000000000));
+                const dateB = b.dueDate ? new Date(b.dueDate) : (b.status === "Completed" ? new Date(0) : new Date(8640000000000000));
+                
+                if (a.status === "Completed" && b.status !== "Completed") return 1;
+                if (a.status !== "Completed" && b.status === "Completed") return -1;
+
+                if (a.status === "Completed" && b.status === "Completed") {
+                    const compDateA = a.completedDate ? new Date(a.completedDate) : new Date(0);
+                    const compDateB = b.completedDate ? new Date(b.completedDate) : new Date(0);
+                    return compDateB - compDateA;
+                }
+                return dateA - dateB;
+            });
+
+
+            filteredTasks.forEach(task => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = `task-list-item p-3 border rounded-md bg-gray-50 shadow-sm ${task.status === "Completed" ? 'opacity-70' : ''}`;
+                taskDiv.addEventListener('click', (event) => {
+                    console.log(`Task item clicked: ${task.taskId}`);
+                    openTaskActivityModal(task.taskId);
+                });
+                
+                let priorityClass = '';
+                switch (task.priority) {
+                    case 'High': priorityClass = 'priority-High'; break;
+                    case 'Medium': priorityClass = 'priority-Medium'; break;
+                    case 'Low': priorityClass = 'priority-Low'; break;
+                }
+
+                const isCompleted = task.status === "Completed";
+
+                taskDiv.innerHTML = `
+                    <div class="flex items-start">
+                        <input type="checkbox" id="task-complete-${task.taskId}" class="form-input h-5 w-5 text-green-600 focus:ring-green-500 mr-3 mt-1" 
+                               onchange="event.stopPropagation(); handleTaskCompletionChange('${task.taskId}', this.checked)" ${isCompleted ? 'checked' : ''}>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-md ${priorityClass} ${isCompleted ? 'task-completed' : ''}">${task.displayName || 'Unnamed Task'} 
+                                <span class="text-xs text-gray-400 ml-2">(ID: ${task.taskId})</span>
+                            </h4>
+                            <p class="text-sm text-gray-600 whitespace-pre-wrap ${isCompleted ? 'task-completed' : ''}">${task.description || 'No description.'}</p>
+                            <div class="text-xs text-gray-500 mt-2">
+                                ${task.dueDate ? `<span>Due: ${formatDisplayDateTime(task.dueDate)}</span>` : ''}
+                                ${task.assetId ? `<span class="ml-2">Asset: ${farmData[task.assetId] ? farmData[task.assetId].name : task.assetId}</span>` : ''}
+                                ${task.mapZone ? `<span class="ml-2">Zone: ${task.mapZone}</span>` : ''}
+                                <br><span>Created: ${formatDisplayDateTime(task.createdDate)}</span>
+                                ${isCompleted && task.completedDate ? `<br><span class="text-green-600">Completed: ${formatDisplayDateTime(task.completedDate)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                taskListContainer.appendChild(taskDiv);
+            });
+        }
+
+        async function handleTaskCompletionChange(taskId, isChecked) {
+            const newStatus = isChecked ? "Completed" : "Open";
+            
+            showUserMessage(taskMessageBox, taskMessageText, `Updating task ${taskId} to ${newStatus}...`, null, 10000);
+
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: "updateTaskStatus",dataType: "task", taskId: taskId, status: newStatus })
+                });
+
+                if (response.ok) {
+                    const responseText = await response.text();
+                    let success = false;
+                    try {
+                        const jsonResponse = JSON.parse(responseText);
+                        if (jsonResponse.status === "success") {
+                            showUserMessage(taskMessageBox, taskMessageText, `Task ${taskId} marked as ${newStatus}.`, true);
+                            success = true;
+                        } else {
+                            throw new Error(jsonResponse.message || "Apps Script reported an issue updating task status.");
+                        }
+                    } catch (e) {
+                         console.warn("Update Task Status: Apps Script response not valid JSON, but HTTP status was OK. Assuming success.", responseText);
+                         showUserMessage(taskMessageBox, taskMessageText, `Task ${taskId} status update sent. (Check sheet for confirmation)`, true);
+                         success = true;
+                    }
+
+                    if(success){
+                        const taskIndex = taskListData.findIndex(t => t.taskId === taskId);
+                        if (taskIndex > -1) {
+                            taskListData[taskIndex].status = newStatus;
+                            taskListData[taskIndex].completedDate = newStatus === "Completed" ? new Date().toISOString() : "";
+                        }
+                        populateTasksDisplay();
+                        if (taskActivityModal && taskActivityModal.classList.contains('active') && currentOpenTaskId === taskId) {
+                            taskModalStatus.textContent = newStatus;
+                            if (newStatus === "Completed" && taskListData[taskIndex].completedDate) {
+                                taskModalCompletedDate.textContent = formatDisplayDateTime(taskListData[taskIndex].completedDate);
+                                taskModalCompletedDateContainer.classList.remove('hidden');
+                            } else {
+                                taskModalCompletedDateContainer.classList.add('hidden');
+                            }
+                        }
+                    }
+
+                } else {
+                    const errorText = await response.text();
+                    console.error("Server response error text (Update Task Status):", errorText);
+                    throw new Error(`Failed to update task status. Server responded with ${response.status}.`);
+                }
+            } catch (error) {
+                console.error("Full error object during handleTaskCompletionChange:", error);
+                showUserMessage(taskMessageBox, taskMessageText, `Error updating task status: ${getErrorMessage(error)}`, false);
+                const checkbox = document.getElementById(`task-complete-${taskId}`);
+                if(checkbox) checkbox.checked = !isChecked;
+            }
+        }
+
+
+        async function saveNewTask() {
+            if (GOOGLE_APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' || !GOOGLE_APPS_SCRIPT_URL) {
+                showUserMessage(taskMessageBox, taskMessageText, "Task saving is not configured (Apps Script URL missing).", false);
+                return;
+            }
+            if (!saveTaskButton) {
+                console.error("CRITICAL: saveTaskButton element is not cached or missing from DOM.");
+                showUserMessage(taskMessageBox, taskMessageText, "Task form error (Save button missing). Please refresh.", false);
+                return;
+            }
+            saveTaskButton.disabled = true;
+            saveTaskButton.textContent = "Saving...";
+
+            const requiredInputs = {
+                newTaskNameInput, newTaskDescriptionInput, newTaskDueDateInput,
+                newTaskAssetIdSelect, newTaskMapZoneInput, newTaskPriorityInput,
+                newTaskLatInput, newTaskLonInput
+            };
+
+            for (const key in requiredInputs) {
+                if (!requiredInputs[key]) {
+                    console.error(`CRITICAL SAVE ERROR: Task form element variable '${key}' is null. Check ID and cacheDOMElements().`);
+                    showUserMessage(taskMessageBox, taskMessageText, `Task form error (element ${key} is missing). Please refresh.`, false);
+                    saveTaskButton.disabled = false;
+                    saveTaskButton.textContent = "Add Task to Sheet";
+                    return;
+                }
+            }
+
+
+            const displayName = newTaskNameInput.value.trim();
+            const description = newTaskDescriptionInput.value.trim();
+            const dueDate = newTaskDueDateInput.value;
+            const assetId = newTaskAssetIdSelect.value;
+            const mapZone = newTaskMapZoneInput.value.trim();
+            const priority = newTaskPriorityInput.value;
+            const taskLat = newTaskLatInput.value.trim();
+            const taskLon = newTaskLonInput.value.trim();
+
+
+            if (!displayName) {
+                showUserMessage(taskMessageBox, taskMessageText, "Please enter a task name.", null);
+                saveTaskButton.disabled = false;
+                saveTaskButton.textContent = "Add Task to Sheet";
+                return;
+            }
+
+            const taskId = `TASK-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+            const createdDate = new Date().toISOString();
+
+            const taskData = {
+                dataType: "task",
+                action: "createTask",
+                taskId: taskId,
+                displayName: displayName,
+                description: description,
+                dueDate: dueDate,
+                createdDate: createdDate,
+                mapZone: mapZone,
+                assetId: assetId,
+                priority: priority,
+                taskLat: taskLat,
+                taskLon: taskLon
+            };
+
+            showUserMessage(taskMessageBox, taskMessageText, "Saving new task...", null, 10000);
+
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(taskData)
+                });
+
+                if (response.ok) {
+                    const responseText = await response.text();
+                     try {
+                        const jsonResponse = JSON.parse(responseText);
+                        if (jsonResponse.status === "success") {
+                             showUserMessage(taskMessageBox, taskMessageText, `Task "${displayName}" saved successfully! (ID: ${jsonResponse.taskId || taskId})`, true);
+                        } else {
+                            throw new Error(jsonResponse.message || "Apps Script reported an issue saving task.");
+                        }
+                    } catch (e) {
+                        console.warn("Task save: Apps Script response not valid JSON, but HTTP status was OK. Assuming success.", responseText);
+                        showUserMessage(taskMessageBox, taskMessageText, "Task sent to sheet! (Check sheet for confirmation)", true);
+                    }
+                    
+                    const newTaskForLocal = {...taskData, status: "Open", completedDate: ""};
+                    delete newTaskForLocal.action;
+                    delete newTaskForLocal.dataType;
+
+                    taskListData.push(newTaskForLocal);
+                    populateTasksDisplay();
+                    populateLeafletMapMarkers();
+
+                    newTaskNameInput.value = '';
+                    newTaskDescriptionInput.value = '';
+                    newTaskDueDateInput.value = '';
+                    newTaskAssetIdSelect.value = '';
+                    newTaskMapZoneInput.value = '';
+                    newTaskPriorityInput.value = 'Medium';
+                    newTaskLatInput.value = '';
+                    newTaskLonInput.value = '';
+                    if (taskLocationCoordsDisplay) taskLocationCoordsDisplay.textContent = 'No location set';
+
+
+                } else {
+                    const errorText = await response.text();
+                    console.error("Server response error text (Task):", errorText);
+                    throw new Error(`Failed to save task. Server responded with ${response.status}.`);
+                }
+            } catch (error) {
+                console.error("Full error object during saveNewTask:", error);
+                showUserMessage(taskMessageBox, taskMessageText, `Error saving task: ${getErrorMessage(error)}`, false);
+            } finally {
+                 if (saveTaskButton) {
+                    saveTaskButton.disabled = false;
+                    saveTaskButton.textContent = "Add Task to Sheet";
+                }
+            }
+        }
+
+        function openImageZoomModal(imageUrl) {
+            if (zoomedImage && imageZoomModal) {
+                zoomedImage.src = imageUrl;
+                imageZoomModal.classList.add('active');
+            }
+        }
+        function closeImageZoomModal() {
+            if (imageZoomModal) {
+                imageZoomModal.classList.remove('active');
+                if(zoomedImage) zoomedImage.src = "";
+            }
+        }
+
+        function openTaskActivityModal(taskId) {
+            console.log("openTaskActivityModal called for task ID:", taskId);
+            if (!taskActivityModal) {
+                console.error("CRITICAL: taskActivityModal element is null in openTaskActivityModal. Cannot open modal.");
+                return;
+            }
+            currentOpenTaskId = taskId;
+            const task = taskListData.find(t => t.taskId === taskId);
+
+            if (!task) {
+                console.error("Task not found for ID:", taskId);
+                showUserMessage(taskMessageBox, taskMessageText, "Could not find task details.", false);
+                return;
+            }
+            
+            taskActivityModal.style.zIndex = "1005";
+            if (assetInfoModal) assetInfoModal.style.zIndex = "1000";
+
+
+            taskModalTaskName.textContent = task.displayName || 'N/A';
+            taskModalTaskId.textContent = task.taskId || 'N/A';
+            taskModalDescription.textContent = task.description || 'N/A';
+            taskModalDueDate.textContent = task.dueDate ? formatDisplayDateTime(task.dueDate) : 'N/A';
+            taskModalPriority.textContent = task.priority || 'N/A';
+            taskModalRelatedAsset.textContent = task.assetId ? (farmData[task.assetId]?.name || task.assetId) : 'None';
+            taskModalLocation.textContent = (task.taskLat && task.taskLon) ? `Lat: ${parseFloat(task.taskLat).toFixed(4)}, Lon: ${parseFloat(task.taskLon).toFixed(4)}` : 'Not set';
+            taskModalStatus.textContent = task.status || 'N/A';
+            taskModalCreatedDate.textContent = formatDisplayDateTime(task.createdDate);
+
+            if (taskModalCompleteToggle) {
+                taskModalCompleteToggle.checked = task.status === "Completed";
+                const newToggle = taskModalCompleteToggle.cloneNode(true);
+                taskModalCompleteToggle.parentNode.replaceChild(newToggle, taskModalCompleteToggle);
+                taskModalCompleteToggle = newToggle;
+                
+                taskModalCompleteToggle.addEventListener('change', (event) => {
+                    event.stopPropagation();
+                    handleTaskCompletionChange(taskId, event.target.checked);
+                });
+            }
+
+
+            if (task.status === "Completed" && task.completedDate) {
+                taskModalCompletedDate.textContent = formatDisplayDateTime(task.completedDate);
+                taskModalCompletedDateContainer.classList.remove('hidden');
+            } else {
+                taskModalCompletedDateContainer.classList.add('hidden');
+            }
+
+            displayTaskSpecificActivityLog(taskId);
+
+            taskModalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
+            taskModalNewActivityNoteInput.value = '';
+            if (taskModalNewActivityImageFileInput) taskModalNewActivityImageFileInput.value = null;
+            if (taskModalNewActivityImagePreview) {
+                taskModalNewActivityImagePreview.src = "#";
+                taskModalNewActivityImagePreview.classList.add('hidden');
+            }
+            newTaskActivitySelectedFile = null;
+
+            taskActivityModal.classList.add('active');
+        }
+
+        function closeTaskActivityModal() {
+            if (taskActivityModal) {
+                taskActivityModal.classList.remove('active');
+                taskActivityModal.style.zIndex = "1000";
+            }
+            currentOpenTaskId = null;
+            newTaskActivitySelectedFile = null;
+             if (taskModalNewActivityImagePreview) {
+                taskModalNewActivityImagePreview.src = "#";
+                taskModalNewActivityImagePreview.classList.add('hidden');
+            }
+        }
+
+        function displayTaskSpecificActivityLog(taskId) {
+            if (!taskSpecificActivityLogDisplay) {
+                console.error("Task specific activity log display element not found.");
+                return;
+            }
+            taskSpecificActivityLogDisplay.innerHTML = '<p class="text-center text-gray-500">Loading activities...</p>';
+            console.log(`Filtering allActivitiesList for taskId: ${taskId}. Total activities: ${allActivitiesList.length}`);
+            
+            const relevantActivities = allActivitiesList.filter(activity => activity.taskId === taskId);
+            console.log(`Found ${relevantActivities.length} activities for task ${taskId}`);
+
+
+            if (relevantActivities.length === 0) {
+                taskSpecificActivityLogDisplay.innerHTML = '<p class="text-center text-gray-500">No activities found for this task.</p>';
+                return;
+            }
+
+            relevantActivities.sort((a, b) => new Date(b.userActivityTimestamp || b.timestamp) - new Date(a.userActivityTimestamp || a.timestamp));
+            
+            taskSpecificActivityLogDisplay.innerHTML = '';
+            relevantActivities.forEach(activity => {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'activity-log-entry';
+                const activityDateToDisplay = activity.userActivityTimestamp || activity.timestamp;
+                let imgHTML = '';
+                if (activity.activityImageUrl) {
+                    imgHTML = `<img src="${activity.activityImageUrl}" alt="Activity Image" class="activity-image my-2" 
+                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                               <p class="text-red-500 text-sm hidden">Image load failed for ${activity.activityImageUrl}</p>`;
+                }
+                entryDiv.innerHTML = `
+                    <p class="text-xs text-gray-500 mb-1">Activity Date: ${formatDisplayDateTime(activityDateToDisplay)}</p>
+                    ${imgHTML}
+                    <p class="text-sm whitespace-pre-wrap">${activity.noteText || "No note for this activity."}</p>
+                    ${activity.assetId && farmData[activity.assetId] ? `<button class="text-blue-500 hover:underline text-xs mt-1" onclick="openAssetModal('${activity.assetId}')">View Related Asset</button>` : ''}
+                `;
+                taskSpecificActivityLogDisplay.appendChild(entryDiv);
+            });
+        }
+
+        async function saveTaskActivity() {
+            if (!currentOpenTaskId) {
+                showUserMessage(activityMessageBox, activityMessageText, "No task selected to log activity against.", false);
+                return;
+            }
+            if (!saveTaskSpecificActivityButton) return;
+
+            saveTaskSpecificActivityButton.disabled = true;
+            saveTaskSpecificActivityButton.textContent = 'Saving...';
+
+            const task = taskListData.find(t => t.taskId === currentOpenTaskId);
+            const associatedAssetId = task ? task.assetId : null;
+
+            const userActivityTimestamp = taskModalNewActivityDateTimeInput.value ? new Date(taskModalNewActivityDateTimeInput.value).toISOString() : new Date().toISOString();
+            const noteText = taskModalNewActivityNoteInput.value.trim();
+            
+            let imageData = null;
+            let imageFileName = null;
+            let imageMimeType = null;
+
+            if (newTaskActivitySelectedFile) {
+                imageData = newTaskActivitySelectedFile.data;
+                imageFileName = newTaskActivitySelectedFile.name;
+                imageMimeType = newTaskActivitySelectedFile.type;
+            }
+
+            if (!noteText && !imageData && !taskModalNewActivityDateTimeInput.value) {
+                showUserMessage(activityMessageBox, activityMessageText, "Please enter some activity data.", null);
+                saveTaskSpecificActivityButton.disabled = false;
+                saveTaskSpecificActivityButton.textContent = 'Save Activity to Task';
+                return;
+            }
+
+            const loggingTimestamp = new Date().toISOString();
+            const activityId = `ACT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+            const activityData = {
+                dataType: "activity",
+                loggingTimestamp: loggingTimestamp,
+                userActivityTimestamp: userActivityTimestamp,
+                assetId: associatedAssetId || "",
+                taskId: currentOpenTaskId,
+                noteText: noteText,
+                activityId: activityId,
+                imageData: imageData,
+                imageFileName: imageFileName,
+                imageMimeType: imageMimeType
+            };
+            
+            showUserMessage(activityMessageBox, activityMessageText, "Saving task activity...", null, 10000);
+
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8', },
+                    body: JSON.stringify(activityData)
+                });
+                
+                if (response.ok) {
+                    const responseText = await response.text();
+                    try {
+                        const jsonResponse = JSON.parse(responseText);
+                        if (jsonResponse.status === "success") {
+                             showUserMessage(activityMessageBox, activityMessageText, `Activity for task ${currentOpenTaskId} saved!`, true);
+                             if (jsonResponse.activityImageUrl) {
+                                 activityData.activityImageUrl = jsonResponse.activityImageUrl;
+                             }
+                        } else {
+                            throw new Error(jsonResponse.message || "Apps Script reported an issue saving task activity.");
+                        }
+                    } catch (e) {
+                        console.warn("Task Activity save: Apps Script response not valid JSON, but HTTP status was OK. Assuming success.", responseText);
+                        showUserMessage(activityMessageBox, activityMessageText, "Task activity sent to sheet!", true);
+                    }
+                    
+                    delete activityData.imageData;
+                    delete activityData.imageFileName;
+                    delete activityData.imageMimeType;
+
+                    allActivitiesList.push(activityData);
+                    if (activityData.assetId) {
+                        if (!assetActivities[activityData.assetId]) {
+                            assetActivities[activityData.assetId] = [];
+                        }
+                        assetActivities[activityData.assetId].push(activityData);
+                        assetActivities[activityData.assetId].sort((a, b) => new Date(a.userActivityTimestamp || a.timestamp) - new Date(b.userActivityTimestamp || b.timestamp));
+                    }
+
+
+                    displayTaskSpecificActivityLog(currentOpenTaskId);
+                    populateRecentActivityLog();
+
+                } else {
+                    const errorText = await response.text();
+                    console.error("Server response error text (Task Activity):", errorText);
+                    throw new Error(`Failed to save task activity. Server responded with ${response.status}.`);
+                }
+            } catch (error) {
+                console.error("Full error object during saveTaskActivity:", error);
+                showUserMessage(activityMessageBox, activityMessageText, `Error saving task activity: ${getErrorMessage(error)}`, false);
+            } finally {
+                if (saveTaskSpecificActivityButton) {
+                    saveTaskSpecificActivityButton.disabled = false;
+                    saveTaskSpecificActivityButton.textContent = 'Save Activity to Task';
+                }
+                taskModalNewActivityDateTimeInput.value = formatDateTimeForInput(new Date().toISOString());
+                taskModalNewActivityNoteInput.value = '';
+                if (taskModalNewActivityImageFileInput) taskModalNewActivityImageFileInput.value = null;
+                if (taskModalNewActivityImagePreview) {
+                    taskModalNewActivityImagePreview.src = "#";
+                    taskModalNewActivityImagePreview.classList.add('hidden');
+                }
+                newTaskActivitySelectedFile = null;
+            }
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            cacheDOMElements();
+            
+            const dashboardTabButton = document.getElementById('dashboardTabButton');
+            if (dashboardTabButton) {
+                dashboardTabButton.click();
+            } else {
+                console.error("Dashboard tab button not found on DOMContentLoaded!");
+            }
+            
+            loadInitialData();
+            
+            if(showCompletedTasksToggle) {
+                showCompletedTasksToggle.addEventListener('change', populateTasksDisplay);
+            }
+            
+            if (modalNewActivityImageFileInput) {
+                modalNewActivityImageFileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            newActivitySelectedFile = {
+                                name: file.name,
+                                type: file.type,
+                                data: e.target.result
+                            };
+                            if(modalNewActivityImagePreview) {
+                                modalNewActivityImagePreview.src = e.target.result;
+                                modalNewActivityImagePreview.classList.remove('hidden');
+                            }
+                        }
+                        reader.readAsDataURL(file);
+                    } else {
+                        newActivitySelectedFile = null;
+                         if(modalNewActivityImagePreview) {
+                            modalNewActivityImagePreview.src = "#";
+                            modalNewActivityImagePreview.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+            if (taskModalNewActivityImageFileInput) {
+                taskModalNewActivityImageFileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            newTaskActivitySelectedFile = {
+                                name: file.name,
+                                type: file.type,
+                                data: e.target.result
+                            };
+                            if(taskModalNewActivityImagePreview) {
+                                taskModalNewActivityImagePreview.src = e.target.result;
+                                taskModalNewActivityImagePreview.classList.remove('hidden');
+                            }
+                        }
+                        reader.readAsDataURL(file);
+                    } else {
+                        newTaskActivitySelectedFile = null;
+                         if(taskModalNewActivityImagePreview) {
+                            taskModalNewActivityImagePreview.src = "#";
+                            taskModalNewActivityImagePreview.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+
+             if (prevRecentActivityPage && nextRecentActivityPage) {
+                prevRecentActivityPage.addEventListener('click', () => {
+                    if (recentActivityCurrentPage > 1) {
+                        recentActivityCurrentPage--;
+                        populateRecentActivityLog();
+                    }
+                });
+                nextRecentActivityPage.addEventListener('click', () => {
+                    const totalPages = Math.ceil(allActivitiesList.length / activitiesPerPage);
+                    if (recentActivityCurrentPage < totalPages) {
+                        recentActivityCurrentPage++;
+                        populateRecentActivityLog();
+                    }
+                });
+            }
+
+        });
+    </script>
 
 </body>
 </html>
