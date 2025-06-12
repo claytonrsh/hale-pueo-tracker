@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hale Pueo - homestead tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f1de;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 1rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #4a5568;
+        }
+        .tab-button:hover {
+            background-color: #f7fafc;
+            border-bottom-color: #a57c5b;
+        }
+        .tab-button.active {
+            border-bottom-color: #8db580;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        .tab-content {
+            display: none;
+            padding-top: 1.5rem;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-input, .form-textarea, .form-date, .form-datetime, .form-select, .form-file {
+            border-color: #c7c7c7;
+            transition: border-color 0.3s ease;
+        }
+        .form-input:focus, .form-textarea:focus, .form-date:focus, .form-datetime:focus, .form-select:focus, .form-file:focus {
+            border-color: #8db580;
+            box-shadow: 0 0 0 2px rgba(141, 181, 128, 0.3);
+            outline: none;
+        }
+        .action-button {
+            background-color: #a57c5b;
+            color: white;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            transition: background-color 0.3s ease;
+        }
+        .action-button:hover {
+            background-color: #8c694c;
+        }
+        .action-button:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+        }
+        
+        #messageBox, #loadingBox, #errorBox, #activityMessageBox, #taskMessageBox {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #8db580;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #farmMapViewport {
+            width: 100%;
+            height: 70vh;
+            max-height: 650px;
+            border: 2px solid #acc6a0;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            background-color: #e6f0e1;
+        }
+       
+        .asset-image, .activity-image, .popup-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #ddd;
+            object-fit: cover;
+        }
+        .asset-image, .activity-image {
+             max-height: 200px;
+        }
+        .popup-image {
+            max-height: 150px;
+        }
+
+        #modalNewActivityImagePreview:empty, #modalNewActivityImagePreview[src="#"],
+        #taskModalNewActivityImagePreview:empty, #taskModalNewActivityImagePreview[src="#"] {
+            display: none;
+        }
+         #taskModalNewActivityImagePreview {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #ddd;
+            object-fit: cover;
+        }
+        .notes-textarea {
+            min-height: 80px;
+        }
+        .activity-log-entry, .task-list-item, .recent-activity-item {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .activity-log-entry:last-child, .task-list-item:last-child, .recent-activity-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .priority-High { color: #e53e3e; font-weight: bold; }
+        .priority-Medium { color: #dd6b20; }
+        .priority-Low { color: #38a169; }
+        .task-completed { text-decoration: line-through; color: #a0aec0; }
+        .task-completed .font-semibold { font-weight: normal; }
+        .task-list-item { cursor: pointer; }
+
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #imageZoomModal.modal-overlay, #taskLocationModal.modal-overlay {
+            z-index: 1010;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-close-button {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #777;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        .modal-close-button:hover {
+            color: #333;
+        }
+        
+        #imageZoomModal .modal-content {
+            max-width: 90vw;
+            max-height: 90vh;
+            padding: 0.5rem;
+            background-color: #333;
+        }
+        #zoomedImage {
+            display: block;
+            max-width: 100%;
+            max-height: calc(90vh - 40px);
+            margin: auto;
+            border-radius: 4px;
+        }
+        #taskLocationPickerMap {
+            height: 300px;
+            width: 100%;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius: 5px;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+        }
+        .leaflet-popup-content {
+            margin: 13px 19px !important;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        .leaflet-popup-content p {
+            margin: 0.5em 0 !important;
+        }
+         .leaflet-popup-content strong {
+            color: #333;
+        }
+        .leaflet-popup-content .popup-image {
+            margin-bottom: 0.5em;
+        }
+        .leaflet-popup-content .popup-notes {
+            max-height: 60px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            color: #555;
+            border-top: 1px solid #eee;
+            margin-top: 0.5em;
+            padding-top: 0.5em;
+        }
+        .leaflet-div-icon {
+            background-clip: padding-box;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            line-height: 26px;
+            font-size: 13px;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+            border-width: 2px;
+            border-style: solid;
+        }
+        .tree-marker { background-color: rgba(76, 175, 80, 0.9); border-color: rgba(46, 125, 50, 1); }
+        .plant-marker { background-color: rgba(139, 195, 74, 0.9); border-color: rgba(104, 159, 56, 1); }
+        .poultry-marker { background-color: rgba(255, 193, 7, 0.9); border-color: rgba(251, 140, 0, 1); }
+        .structure-marker { background-color: rgba(158, 158, 158, 0.9); border-color: rgba(97, 97, 97, 1); }
+        .other-marker { background-color: rgba(33, 150, 243, 0.9); border-color: rgba(25, 118, 210, 1); }
+        .task-map-marker { background-color: rgba(156, 39, 176, 0.9); border-color: rgba(123, 31, 162, 1); }
+
+
+        .filter-button {
+            padding: 0.3rem 0.8rem;
+            margin: 0.2rem;
+            border: 1px solid #ccc;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+        .filter-button.active {
+            background-color: #8db580;
+            color: white;
+            border-color: #7ca470;
+        }
+        .filter-button:not(.active):hover {
+            background-color: #f0f0f0;
+        }
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        .pagination-button {
+            background-color: #e2e8f0;
+            color: #4a5568;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .pagination-button:hover:not(:disabled) {
+            background-color: #cbd5e0;
+        }
+        .pagination-button:disabled {
+            background-color: #f7fafc;
+            color: #a0aec0;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-[#5c4033]">Hale Pueo - homestead tracker</h1>
+        </header>
+
+        <div class="mb-6 border-b border-gray-300">
+            <nav class="flex -mb-px" aria-label="Tabs">
+                <button data-tab="dashboardTab" class="tab-button active" id="dashboardTabButton">Dashboard</button>
+                <button data-tab="recentActivityTab" class="tab-button" id="recentActivityTabButton">Recent Activity</button>
+                <button data-tab="tasksTab" class="tab-button" id="tasksTabButton">Task Priority</button>
+                <button data-tab="aboutTab" class="tab-button" id="aboutTabButton">About Hale Pueo</button>
+            </nav>
+        </div>
+
+        <div id="loadingBox" class="hidden bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg relative mb-4 text-center" role="status"></div>
+        <div id="messageBox" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative mb-4 text-center" role="alert">
+            <strong class="font-bold">Success!</strong>
+            <span class="block sm:inline" id="successMessageText"></span>
+        </div>
+        <div id="errorBox" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4 text-center" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline" id="errorMessageText"></span>
+        </div>
+        <div id="activityMessageBox" class="hidden bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg relative mb-4 text-center">
+             <span class="block sm:inline" id="activityMessageText"></span>
+        </div>
+         <div id="taskMessageBox" class="hidden bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg relative mb-4 text-center">
+             <span class="block sm:inline" id="taskMessageText"></span>
+        </div>
+
+        <div id="dashboardTab" class="tab-content active">
+            <div class="mb-4 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                <h3 class="text-lg font-semibold mb-2">Map Filters:</h3>
+                <div id="assetTypeFilterButtonsContainer" class="flex flex-wrap gap-2">
+                </div>
+            </div>
+            <div id="farmMapViewport">
+            </div>
+            <p class="text-center text-sm text-gray-500 italic mt-2">Click on a map marker to view details and log activity.</p>
+        </div>
+
+        <div id="recentActivityTab" class="tab-content">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">Recent Homestead Activities</h2>
+            <div id="recentActivityPagination" class="pagination-controls">
+                <button id="prevRecentActivityPage" class="pagination-button">Previous</button>
+                <span id="recentActivityPageInfo" class="text-sm text-gray-600">Page 1 of 1</span>
+                <button id="nextRecentActivityPage" class="pagination-button">Next</button>
+            </div>
+            <div id="recentActivityContainer" class="mt-4 max-h-[70vh] overflow-y-auto space-y-4">
+                <p class="text-gray-500">Loading recent activities...</p>
+            </div>
+        </div>
+
+
+        <div id="aboutTab" class="tab-content">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">About Hale Pueo Homestead</h2>
+            <div class="prose max-w-none text-gray-700">
+                 <h3 class="text-xl font-semibold mt-6 mb-1">Basic Farm Layout <span class="text-sm text-gray-500">(click image to enlarge)</span></h3>
+                <figure class="my-2">
+                    <img src="https://i.imgur.com/YsWPqY9.jpeg"
+                         alt="Hale Pueo Farm Layout"
+                         class="rounded-lg shadow-md cursor-pointer w-full md:w-2/3 lg:w-1/2 mx-auto"
+                         id="aboutPageMapImage">
+                </figure>
+                <p class="mt-4">Welcome to Hale Pueo, our little slice of paradise in Hāna, Maui!</p>
+                <p>This homestead tracker is a digital companion to our efforts in cultivating a sustainable and productive 3-acre farm. We are home to a variety of fruit trees, a lively flock of chickens, and happy ducks enjoying the tropical environment.</p>
+                <h3 class="text-xl font-semibold mt-6 mb-2">Our Vision</h3>
+                <p>Our goal is to blend traditional farming wisdom with modern tools to create a thriving ecosystem. We believe in:
+                    <ul>
+                        <li>Sustainable practices that nurture the land.</li>
+                        <li>Growing a diverse range of foods for our family and community.</li>
+                        <li>Providing a healthy and happy environment for our animals.</li>
+                        <li>Continuously learning and adapting to the unique challenges and joys of farming in Hāna.</li>
+                    </ul>
+                </p>
+                <h3 class="text-xl font-semibold mt-6 mb-2">This Tracker</h3>
+                <p>This digital tool helps us:
+                    <ul>
+                        <li>Keep an inventory of our assets, from individual trees to our poultry.</li>
+                        <li>Track activities, maintenance schedules, and observations.</li>
+                        <li>Monitor the health and productivity of our plants and animals.</li>
+                        <li>Make informed decisions to improve our homesteading practices.</li>
+                        <li>Manage and prioritize tasks around the homestead.</li>
+                    </ul>
+                </p>
+                <p>Feel free to explore the dashboard to see what's happening on the farm!</p>
+            </div>
+        </div>
+
+        <div id="tasksTab" class="tab-content">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">Task Priority</h2>
+            <div class="mb-4 space-y-3 md:space-y-0 md:flex md:items-center md:justify-between">
+                <label for="showCompletedTasksToggle" class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="showCompletedTasksToggle" class="form-input rounded h-5 w-5 text-green-600 focus:ring-green-500">
+                    <span class="ml-2 text-gray-700">Show Completed Tasks</span>
+                </label>
+                <div class="flex items-center gap-2">
+                    <label for="taskAssigneeFilter" class="text-sm font-medium text-gray-700">Filter by Assignee:</label>
+                    <select id="taskAssigneeFilter" class="form-select rounded-md p-2 border-gray-300">
+                        <option value="">All Assignees</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2">
+                    <h3 class="text-xl font-semibold mb-3">Task List</h3>
+                    <div id="taskListContainer" class="space-y-3 max-h-96 overflow-y-auto bg-white p-4 rounded-md border">
+                        <p class="text-gray-500">Loading tasks or no tasks found.</p>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-3">Add New Task</h3>
+                    <div id="addTaskForm" class="space-y-3 bg-white p-4 border rounded-md">
+                        <div>
+                            <label for="newTaskName" class="block text-sm font-medium text-gray-700">Task Name:</label>
+                            <input type="text" id="newTaskName" class="form-input mt-1 block w-full rounded-md p-2" placeholder="e.g., Prune Mango Trees">
+                        </div>
+                        <div>
+                            <label for="newTaskDescription" class="block text-sm font-medium text-gray-700">Description:</label>
+                            <textarea id="newTaskDescription" rows="3" class="form-textarea notes-textarea mt-1 block w-full rounded-md p-2" placeholder="Details about the task..."></textarea>
+                        </div>
+                        <div>
+                            <label for="newTaskAssignedTo" class="block text-sm font-medium text-gray-700">Assigned To (Optional):</label>
+                            <input type="text" id="newTaskAssignedTo" class="form-input mt-1 block w-full rounded-md p-2" placeholder="e.g., John D.">
+                        </div>
+                        <div>
+                            <label for="newTaskDueDate" class="block text-sm font-medium text-gray-700">Due Date (Optional):</label>
+                            <input type="date" id="newTaskDueDate" class="form-date mt-1 block w-full rounded-md p-2">
+                        </div>
+                        <div>
+                            <label for="newTaskAssetId" class="block text-sm font-medium text-gray-700">Related Asset (Optional):</label>
+                            <select id="newTaskAssetId" class="form-select mt-1 block w-full rounded-md p-2">
+                                <option value="">None</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label for="newTaskMapZone" class="block text-sm font-medium text-gray-700">Map Zone (Optional):</label>
+                            <input type="text" id="newTaskMapZone" class="form-input mt-1 block w-full rounded-md p-2" placeholder="e.g., Orchard, Coop Area">
+                        </div>
+                         <div>
+                            <label class="block text-sm font-medium text-gray-700">Task Location (Optional):</label>
+                            <input type="hidden" id="newTaskLat">
+                            <input type="hidden" id="newTaskLon">
+                            <button type="button" id="setTaskLocationButton" class="text-sm text-blue-600 hover:underline mt-1">Set Task Location on Map</button>
+                            <span id="taskLocationCoordsDisplay" class="text-xs text-gray-500 ml-2 block mt-1">No location set</span>
+                        </div>
+                        <div>
+                            <label for="newTaskPriority" class="block text-sm font-medium text-gray-700">Priority:</label>
+                            <select id="newTaskPriority" class="form-select mt-1 block w-full rounded-md p-2">
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                        <button id="saveTaskButton" class="action-button w-full">Add Task to Sheet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <p class="text-xs text-gray-500 mt-6 text-center">Note: Asset list is loaded from a Google Sheet. New activities and tasks are sent to a Google Apps Script to be saved.</p>
+    </div>
+
+    <div id="assetInfoModal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="closeAssetModalButton" class="modal-close-button">&times;</button>
+            <h3 id="modalAssetName" class="text-2xl font-semibold text-gray-700 mb-4">Asset Details</h3>
+            
+            <div id="modalStaticAssetInfo" class="mb-4 p-4 border border-gray-200 rounded-md bg-white">
+                <h4 class="font-semibold text-lg mb-2">Asset Information</h4>
+                <p><strong>ID:</strong> <span id="modalStaticAssetId"></span></p>
+                <p><strong>Name:</strong> <span id="modalStaticAssetName"></span></p>
+                <p><strong>Type:</strong> <span id="modalStaticAssetType"></span></p>
+                <p><strong>Description:</strong> <span id="modalStaticAssetDescription" class="text-sm text-gray-600 whitespace-pre-wrap"></span></p>
+                <hr class="my-3">
+                <p><strong>Last Activity Date:</strong> <span id="modalStaticAssetLastActivityDate"></span></p>
+                <div id="modalStaticAssetImageContainer" class="mt-2"></div>
+                <p class="mt-2"><strong>Latest Activity Notes:</strong> <span id="modalStaticAssetLatestNotes" class="text-sm text-gray-600 whitespace-pre-wrap"></span></p>
+            </div>
+
+            <hr class="my-6">
+
+            <div id="modalActivityTrackerSection">
+                <h4 class="font-semibold text-lg mb-3">Full Activity Log</h4>
+                <div id="modalLatestActivityDisplay" class="mb-4 p-3 border border-dashed border-gray-300 rounded-md bg-gray-100 max-h-48 overflow-y-auto">
+                    <p class="text-center text-gray-500">Loading activities or no activities found for this asset.</p>
+                </div>
+                <h4 class="font-semibold text-lg mb-3 mt-6">Add New Activity</h4>
+                <div id="modalAddActivityForm" class="space-y-3 bg-white p-4 border rounded-md">
+                    <div>
+                        <label for="modalNewActivityDateTime" class="block text-sm font-medium text-gray-700">Date & Time of Activity:</label>
+                        <input type="datetime-local" id="modalNewActivityDateTime" class="form-datetime mt-1 block w-full rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="modalNewActivityNote" class="block text-sm font-medium text-gray-700">New Note:</label>
+                        <textarea id="modalNewActivityNote" rows="3" class="form-textarea notes-textarea mt-1 block w-full rounded-md p-2" placeholder="Enter activity details..."></textarea>
+                    </div>
+                    <div>
+                        <label for="modalNewActivityImageFile" class="block text-sm font-medium text-gray-700">Upload Photo (Optional):</label>
+                        <input type="file" id="modalNewActivityImageFile" class="form-file mt-1 block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-green-50 file:text-green-700
+                                hover:file:bg-green-100" accept="image/*">
+                        <img id="modalNewActivityImagePreview" src="#" alt="Image Preview" class="mt-2 hidden" style="max-height: 150px;"/>
+                    </div>
+                    <button id="saveModalActivityButton" class="action-button w-full">Save Activity to Sheet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="imageZoomModal" class="modal-overlay">
+        <div class="modal-content p-2 relative">
+            <button id="closeImageZoomModalButton" class="modal-close-button text-white hover:text-gray-300" style="top:0; right: 5px; font-size:2.5rem;">&times;</button>
+            <img id="zoomedImage" src="" alt="Zoomed Image" class="max-w-full max-h-full">
+        </div>
+    </div>
+    
+    <div id="taskLocationModal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="closeTaskLocationPickerModalButton" class="modal-close-button">×</button>
+            <h3 class="text-xl font-semibold text-gray-700 mb-3">Pick Task Location</h3>
+            <div id="taskLocationPickerMap"></div>
+            <p class="text-xs text-gray-500 mt-2">Click on the map to select a location for the task.</p>
+            <button id="confirmTaskLocationButton" class="action-button mt-3 bg-green-600 hover:bg-green-700">Confirm Location</button>
+        </div>
+    </div>
+
+    <div id="taskActivityModal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="closeTaskActivityModalButton" class="modal-close-button">×</button>
+            <h3 id="taskModalTaskName" class="text-2xl font-semibold text-gray-700 mb-1">Task Details</h3>
+            <p class="text-sm text-gray-500 mb-3">ID: <span id="taskModalTaskId"></span></p>
+            
+            <div id="taskModalStaticInfo" class="mb-4 p-4 border border-gray-200 rounded-md bg-white text-sm">
+                <div class="flex items-center mb-2">
+                    <input type="checkbox" id="taskModalCompleteToggle" class="form-input h-5 w-5 text-green-600 focus:ring-green-500 mr-2">
+                    <label for="taskModalCompleteToggle" class="text-sm font-medium text-gray-700">Mark as Complete</label>
+                </div>
+                <p><strong>Description:</strong> <span id="taskModalDescription" class="whitespace-pre-wrap"></span></p>
+                <p class="mt-1"><strong>Due Date:</strong> <span id="taskModalDueDate"></span></p>
+                <p class="mt-1"><strong>Priority:</strong> <span id="taskModalPriority"></span></p>
+                <p class="mt-1"><strong>Related Asset:</strong> <span id="taskModalRelatedAsset"></span></p>
+                <p class="mt-1"><strong>Location:</strong> <span id="taskModalLocation"></span></p>
+                <p class="mt-1"><strong>Status:</strong> <span id="taskModalStatus"></span></p>
+                <p class="mt-1"><strong>Created:</strong> <span id="taskModalCreatedDate"></span></p>
+                <div id="taskModalCompletedDateContainer" class="hidden mt-1">
+                    <strong>Completed:</strong> <span id="taskModalCompletedDate"></span>
+                </div>
+            </div>
+
+            <hr class="my-6">
+
+            <div id="taskModalActivitySection">
+                <h4 class="font-semibold text-lg mb-3">Activities for this Task</h4>
+                <div id="taskSpecificActivityLogDisplay" class="mb-4 p-3 border border-dashed border-gray-300 rounded-md bg-gray-100 max-h-48 overflow-y-auto">
+                    <p class="text-center text-gray-500">No activities found for this task.</p>
+                </div>
+                <h4 class="font-semibold text-lg mb-3 mt-6">Add New Activity for this Task</h4>
+                <div id="taskModalAddActivityForm" class="space-y-3 bg-white p-4 border rounded-md">
+                    <div>
+                        <label for="taskModalNewActivityDateTime" class="block text-sm font-medium text-gray-700">Date & Time of Activity:</label>
+                        <input type="datetime-local" id="taskModalNewActivityDateTime" class="form-datetime mt-1 block w-full rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="taskModalNewActivityNote" class="block text-sm font-medium text-gray-700">New Note:</label>
+                        <textarea id="taskModalNewActivityNote" rows="3" class="form-textarea notes-textarea mt-1 block w-full rounded-md p-2" placeholder="Enter activity details..."></textarea>
+                    </div>
+                    <div>
+                        <label for="taskModalNewActivityImageFile" class="block text-sm font-medium text-gray-700">Upload Photo (Optional):</label>
+                        <input type="file" id="taskModalNewActivityImageFile" class="form-file mt-1 block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-green-50 file:text-green-700
+                                hover:file:bg-green-100" accept="image/*">
+                        <img id="taskModalNewActivityImagePreview" src="#" alt="Image Preview" class="mt-2 hidden" style="max-height: 150px;"/>
+                    </div>
+                    <button id="saveTaskSpecificActivityButton" class="action-button w-full">Save Activity to Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="app.js" defer></script>
+
+</body>
+</html>
