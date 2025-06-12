@@ -1,6 +1,6 @@
 // --- Configuration ---
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXl17fkaqYmdxU7pJ00Z4WWkglWndAJFhyKDz-axqR2u4zeUQOfgFR94eqp5ZipCwGZ3Ycm1eBu7Tl/pub?gid=0&single=true&output=csv';
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxbajuvOx0cmRpo5KZKxS1Vck644YIlOZCDSizVJ5iTy77qrAVhuVkpoE-GoihKQ-78/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzi-T94NZTtkG94thYGEwwspzOxmP9iNWRccJ1xKmeEAcfwTx9fn5U3D6jWxOaEG50I/exec';
 
 // --- Global Variables ---
 let farmData = {};
